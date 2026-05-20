@@ -6,6 +6,7 @@ build/
 .env
 *.log
 outputs/
+!results/
 genel_bilgiler.txt
 ödev_ayrıntılı.pdf
 .claude/

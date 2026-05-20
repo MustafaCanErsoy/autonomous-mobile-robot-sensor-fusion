@@ -9,10 +9,10 @@
 
 ## Senaryo / Scenario
 
-A differential-drive robot navigates a **50 × 50 m frozen pizza factory** autonomously, transporting pizzas from the production line to cold storage. The factory contains heavy machinery, conveyor belts, and structural pillars that block direct paths and emit electromagnetic interference, making GPS unusable. The robot relies solely on:
+A differential-drive robot navigates a **50 × 50 m frozen pizza factory** autonomously, transporting pizzas from the production line to cold storage. The factory contains heavy machinery, conveyor belts, and structural pillars that block direct paths and emit electromagnetic interference — making GPS unusable. The robot relies solely on:
 
 - **LiDAR** — 180-beam 2D scan, max range 12 m
-- **IMU** — angular velocity measurement
+- **IMU** — angular velocity measurement  
 - **Wheel encoder** — linear and angular velocity from wheel speeds
 
 The robot must reach three waypoints in order:
@@ -27,47 +27,55 @@ Sensor noise is **3× higher** near heavy machinery (electromagnetic interferenc
 
 ---
 
-## Features
-
-- **Non-holonomic differential-drive** kinematic model
-- **3-sensor simulation** with zone-dependent Gaussian noise (LiDAR, IMU, encoder)
-- **Extended Kalman Filter (EKF)** — encoder prediction + IMU update, with Jacobian linearisation of the nonlinear motion model
-- **Dead reckoning** baseline for localization error comparison
-- **Two navigation algorithms**: Potential Field vs Bug2 (with stuck-escape mechanism)
-- **Quantitative error analysis**: RMSE and MAE for EKF vs Dead Reckoning
-- **Animated GIF** simulation output
-- Fully modular Python codebase — each component is independently testable
-
----
-
-## Installation
+## Quick Start
 
 ```bash
 git clone https://github.com/MustafaCanErsoy/autonomous-mobile-robot-sensor-fusion.git
 cd autonomous-mobile-robot-sensor-fusion
 pip install -r requirements.txt
-```
-
-**Requirements:** Python 3.9+, numpy, matplotlib, scipy, pillow
-
----
-
-## Usage
-
-```bash
 python main.py
 ```
 
-All outputs are saved to the `outputs/` directory:
+**Requirements:** Python 3.9+ · numpy · matplotlib · scipy · pillow
 
-| File | Description |
-|------|-------------|
-| `01_environment.png` | Factory map — obstacles, noise zones, waypoints |
-| `02_path_comparison.png` | Potential Field vs Bug2 path overlay |
-| `03_lidar_data.png` | Raw vs noisy LiDAR scan point cloud |
-| `04_localization.png` | Ground truth vs EKF vs Dead Reckoning (2D + time-series) |
-| `05_error_analysis.png` | Position error over time, RMSE and MAE |
-| `animation.gif` | Real-time animated simulation with LiDAR rays |
+All outputs are saved to the `outputs/` directory automatically.
+
+---
+
+## Visual Outputs
+
+Pre-generated results are available in the [`results/`](results/) folder.
+
+### 1. Factory Environment Map
+![Environment](results/01_environment.png)
+
+### 2. Path Comparison — Potential Field vs Bug2
+![Path Comparison](results/02_path_comparison.png)
+
+### 3. LiDAR Sensor Data — Raw vs Noisy
+![LiDAR](results/03_lidar_data.png)
+
+### 4. Localization Results — Ground Truth vs EKF vs Dead Reckoning
+![Localization](results/04_localization.png)
+
+### 5. Error Analysis
+![Error Analysis](results/05_error_analysis.png)
+
+### Animated Simulation
+![Animation](results/animation.gif)
+
+---
+
+## Features
+
+- **Non-holonomic differential-drive** kinematic model
+- **3-sensor simulation** with zone-dependent Gaussian noise (LiDAR, IMU, encoder)
+- **Extended Kalman Filter (EKF)** — encoder prediction + IMU update, Jacobian linearisation
+- **EKF covariance ellipses** — visualised 95% confidence regions
+- **Dead reckoning** baseline for error comparison
+- **Two navigation algorithms**: Potential Field vs Bug2 (with stuck-escape mechanism)
+- **Animated simulation** with robot body (circle + heading arrow) and live LiDAR
+- **Quantitative error analysis**: RMSE and MAE
 
 ---
 
@@ -78,7 +86,7 @@ All outputs are saved to the `outputs/` directory:
 ├── environment.py        # Factory map: 15 obstacles, vectorised ray casting
 ├── robot.py              # Differential-drive kinematic model
 ├── sensors/
-│   ├── lidar.py          # 2D LiDAR with noise and obstacle clustering
+│   ├── lidar.py          # 2D LiDAR with noise zones and obstacle clustering
 │   ├── imu.py            # Angular velocity sensor
 │   └── encoder.py        # Wheel encoder (v, omega measurement)
 ├── fusion/
@@ -86,6 +94,7 @@ All outputs are saved to the `outputs/` directory:
 ├── localization.py       # Dead reckoning + RMSE/MAE error metrics
 ├── navigation.py         # PotentialFieldNav and Bug2Nav
 ├── visualization.py      # All plots and animation
+├── results/              # Pre-generated output images
 └── requirements.txt
 ```
 
@@ -101,48 +110,51 @@ State vector: **[x, y, θ]**
 
 ```
 x'  = x + v·cos(θ)·dt
-y'  = y + v·sin(θ)·dt
+y'  = y + v·sin(θ)·dt  
 θ'  = θ + ω·dt
 P'  = F·P·Fᵀ + Q
 ```
 
-where F is the Jacobian of the nonlinear motion model. EKF differs from standard KF here — the nonlinear kinematics require linearisation at each step.
+F is the Jacobian of the nonlinear motion model — this is what makes it *Extended* KF rather than standard KF.
 
 **Update step** (IMU angular velocity):
 
-The IMU provides a virtual theta observation: `z = θ_prev + ω_imu·dt`. Innovation `z − Hx` captures the discrepancy between IMU and encoder angular rates, correcting theta drift.
+The IMU provides a virtual theta observation: `z = θ_prev + ω_imu·dt`. Innovation `z − Hx` captures the discrepancy between IMU and encoder angular rates and corrects theta drift.
+
+The EKF covariance matrix P is visualised as 95% confidence ellipses on the localization plot — they grow near high-noise machinery zones and shrink in open corridors.
 
 ### Navigation
 
-**Potential Field:** Attractive force toward goal + repulsive forces from LiDAR obstacle readings within 2.5 m. Includes stuck-detection with random escape perturbation (triggered if robot moves < 12 cm in 30 steps).
+**Potential Field:** Attractive force toward goal + repulsive forces from LiDAR obstacle readings within 2.5 m. Vectorised over all 180 beams per step. Includes stuck-detection with random escape perturbation.
 
-**Bug2:** State machine with GO_TO_GOAL and FOLLOW_WALL modes. When an obstacle is detected ahead (< 1.3 m), the robot follows the right-side wall until it re-crosses the M-line (start–goal line) closer to the goal.
+**Bug2:** State machine (GO_TO_GOAL ↔ FOLLOW_WALL). Wall-timeout after 120 steps prevents infinite boundary-following loops in complex obstacle clusters.
 
 ### Dead Reckoning (baseline)
 
-Pure encoder integration — no fusion. Accumulates drift over time, used as the lower-bound benchmark for localization quality.
+Pure encoder integration — no fusion. Accumulates drift over time, used as lower-bound benchmark.
 
 ---
 
 ## Results
 
-### Navigation
-
-| Algorithm | Waypoints Reached | Simulation Time |
-|-----------|------------------|-----------------|
-| Potential Field | 3 / 3 | 83.0 s |
-| Bug2 | 2 / 3 | 400.0 s (timeout at WP3) |
-
-Potential Field outperforms Bug2 in this environment. Bug2's wall-following mode gets trapped near WP3 due to the tight cluster of obstacles (cold storage area + conveyor belts), a known limitation of the algorithm in complex multi-obstacle layouts.
-
 ### Localization (Potential Field run, seed=42)
 
-| Metric | EKF | Dead Reckoning |
-|--------|-----|----------------|
-| RMSE (m) | **6.631** | 13.750 |
-| MAE (m) | **5.298** | 10.992 |
+| Metric | EKF | Dead Reckoning | Improvement |
+|--------|-----|----------------|-------------|
+| RMSE (m) | **6.631** | 13.750 | **−51.8 %** |
+| MAE (m)  | **5.298** | 10.992 | **−51.8 %** |
 
-**EKF reduces position error by ~51.8% vs Dead Reckoning** over an 83-second, 60-meter traverse in a GPS-denied environment. Error magnitudes reflect the absence of absolute position correction (no GPS, no landmark matching) — the EKF drifts, but significantly less than pure odometry.
+EKF halves the position error vs pure odometry over an 83-second, 60-metre traverse in a GPS-denied environment.
+
+### Navigation Comparison
+
+| Waypoint | PF Time | PF Distance | Bug2 Time | Bug2 Distance |
+|----------|---------|-------------|-----------|---------------|
+| Kalite Kontrol | 18.4 s | 13.2 m | 10.8 s | 12.7 m |
+| Ambalaj | 47.1 s | 34.6 m | 28.7 s | 34.0 m |
+| Soğuk Depo | 83.0 s | 59.8 m | **72.3 s** | 72.6 m |
+
+Bug2 is faster overall (72.3 s vs 83.0 s) but travels a longer path to the final waypoint (72.6 m vs 59.8 m) due to boundary-following detours. Potential Field finds shorter, smoother paths at the cost of higher computation per step.
 
 ---
 
@@ -160,8 +172,8 @@ Potential Field outperforms Bug2 in this environment. Bug2's wall-following mode
 
 | Tool | Version | Sections |
 |------|---------|----------|
-| Claude Code (Anthropic) | claude-sonnet-4-6 | System architecture design, EKF formulation, navigation algorithm implementation, visualization code, README |
+| Claude Code (Anthropic) | claude-sonnet-4-6 | System architecture, EKF formulation, navigation algorithms, visualization, README |
 
-**Student contributions:** Scenario concept and design (frozen pizza factory, waypoint layout), algorithm selection and parameter tuning decisions, result interpretation and analysis, project direction throughout development.
+**Student contributions:** Scenario concept and design (frozen pizza factory, creative waypoint layout), algorithm and parameter selection decisions, result interpretation, project direction throughout.
 
 AI tools were used as a collaborative coding assistant. All code was reviewed, executed, and validated by the student.
