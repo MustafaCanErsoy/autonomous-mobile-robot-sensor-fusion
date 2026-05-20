@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.animation as animation
+from matplotlib.patches import Ellipse
 
 OUTPUT_DIR = "outputs"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -40,11 +41,8 @@ def _draw_env(ax, env, show_names=True):
                 ax.text(obs['x'], obs['y'] + obs['r'] + 0.4,
                         obs['name'], ha='center', va='bottom', fontsize=5)
 
-    # Start point
-    ax.plot(*env.start, 'o', ms=10, color='#27ae60',
-            label='Başlangıç', zorder=6)
+    ax.plot(*env.start, 'o', ms=10, color='#27ae60', label='Başlangıç', zorder=6)
 
-    # Waypoints
     colors_wp = ['#f39c12', '#e67e22', '#e74c3c']
     for i, (wp, name) in enumerate(zip(env.waypoints, env.waypoint_names)):
         c = colors_wp[min(i, len(colors_wp) - 1)]
@@ -60,11 +58,22 @@ def _save(fig, filename):
 
 
 def _errors(true_path, est_path):
-    n      = min(len(true_path), len(est_path))
-    t_arr  = np.array(true_path[:n])
-    e_arr  = np.array(est_path[:n])
-    errs   = np.linalg.norm(t_arr[:, :2] - e_arr[:, :2], axis=1)
+    n     = min(len(true_path), len(est_path))
+    t_arr = np.array(true_path[:n])
+    e_arr = np.array(est_path[:n])
+    errs  = np.linalg.norm(t_arr[:, :2] - e_arr[:, :2], axis=1)
     return errs, float(np.sqrt(np.mean(errs**2))), float(np.mean(errs))
+
+
+def _draw_cov_ellipse(ax, mean, cov, n_std=2.0, **kwargs):
+    """Draw a confidence ellipse from a 2x2 covariance matrix."""
+    vals, vecs = np.linalg.eigh(cov)
+    vals  = np.maximum(vals, 0)
+    angle = np.degrees(np.arctan2(vecs[1, -1], vecs[0, -1]))
+    w, h  = 2.0 * n_std * np.sqrt(vals)
+    ell   = Ellipse(xy=mean, width=w, height=h, angle=angle, **kwargs)
+    ax.add_patch(ell)
+    return ell
 
 
 # ------------------------------------------------------------------ #
@@ -101,17 +110,17 @@ def plot_paths(env, pf_path, bug2_path):
     ]:
         _draw_env(ax, env, show_names=False)
         p = np.array(path)
-        ax.plot(p[:, 0], p[:, 1], color=color, lw=1.8,
-                label='Robot Yolu', zorder=5)
+        ax.plot(p[:, 0], p[:, 1], color=color, lw=1.8, label='Robot Yolu', zorder=5)
         ax.plot(p[0, 0], p[0, 1], 'o', ms=9, color='#27ae60', zorder=7)
-        ax.plot(p[-1, 0], p[-1, 1], 's', ms=9, color='#8e44ad', zorder=7,
-                label='Son Konum')
+        ax.plot(p[-1, 0], p[-1, 1], 's', ms=9, color='#8e44ad',
+                zorder=7, label='Son Konum')
         ax.set_title(title, fontsize=12, fontweight='bold')
         ax.set_xlabel('X (m)')
         ax.set_ylabel('Y (m)')
         ax.legend(fontsize=9)
 
-    plt.suptitle('Yol Karşılaştırması: Potential Field vs Bug2', fontsize=14, fontweight='bold')
+    plt.suptitle('Yol Karşılaştırması: Potential Field vs Bug2',
+                 fontsize=14, fontweight='bold')
     plt.tight_layout()
     _save(fig, '02_path_comparison.png')
     plt.close(fig)
@@ -125,7 +134,7 @@ def plot_lidar(robot_state, true_dist, noisy_dist, lidar, env):
     fig, axes = plt.subplots(1, 2, figsize=(16, 7))
 
     for ax, dists, title, pt_color in [
-        (axes[0], true_dist,  'Ham LiDAR (Gürültüsüz)',        '#27ae60'),
+        (axes[0], true_dist,  'Ham LiDAR (Gürültüsüz)',         '#27ae60'),
         (axes[1], noisy_dist, 'Filtrelenmiş LiDAR (Gürültülü)', '#e74c3c'),
     ]:
         _draw_env(ax, env, show_names=False)
@@ -134,13 +143,12 @@ def plot_lidar(robot_state, true_dist, noisy_dist, lidar, env):
                    label='LiDAR Noktaları')
 
         x, y, theta = robot_state
-        # Draw a subset of rays
         stride = max(1, lidar.n_beams // 36)
         for i in range(0, lidar.n_beams, stride):
             ang = theta + lidar.angles[i]
-            rx  = x + dists[i] * np.cos(ang)
-            ry  = y + dists[i] * np.sin(ang)
-            ax.plot([x, rx], [y, ry], color='cyan', lw=0.5, alpha=0.35)
+            ax.plot([x, x + dists[i] * np.cos(ang)],
+                    [y, y + dists[i] * np.sin(ang)],
+                    color='cyan', lw=0.5, alpha=0.35)
 
         ax.plot(x, y, 'bo', ms=9, label='Robot', zorder=6)
         ax.set_title(title, fontsize=12)
@@ -155,11 +163,17 @@ def plot_lidar(robot_state, true_dist, noisy_dist, lidar, env):
 
 
 # ------------------------------------------------------------------ #
-#  4. Localization results                                            #
+#  4. Localization — 2D path + EKF ellipses + x/y/θ time series      #
 # ------------------------------------------------------------------ #
 
-def plot_localization(env, true_path, ekf_path, dr_path):
-    fig, axes = plt.subplots(1, 2, figsize=(18, 8))
+def plot_localization(env, true_path, ekf_path, dr_path, cov_history=None):
+    fig = plt.figure(figsize=(20, 10))
+    gs  = fig.add_gridspec(3, 2, width_ratios=[1.3, 1],
+                           hspace=0.55, wspace=0.35)
+    ax_2d = fig.add_subplot(gs[:, 0])
+    ax_x  = fig.add_subplot(gs[0, 1])
+    ax_y  = fig.add_subplot(gs[1, 1])
+    ax_th = fig.add_subplot(gs[2, 1])
 
     true = np.array(true_path)
     ekf  = np.array(ekf_path)
@@ -167,31 +181,62 @@ def plot_localization(env, true_path, ekf_path, dr_path):
     n    = min(len(true), len(ekf), len(dr))
     t    = np.arange(n) * 0.1
 
-    # 2D overlay
-    ax = axes[0]
-    _draw_env(ax, env, show_names=False)
-    ax.plot(true[:n, 0], true[:n, 1], 'g-',  lw=2.0, label='Gerçek Konum (Ground Truth)', zorder=5)
-    ax.plot(ekf[:n, 0],  ekf[:n, 1],  'b--', lw=1.5, label='EKF Tahmini',                zorder=4)
-    ax.plot(dr[:n, 0],   dr[:n, 1],   'r:',  lw=1.5, label='Dead Reckoning',             zorder=3)
-    ax.set_title('Lokalizasyon (2D Yol)', fontsize=12, fontweight='bold')
-    ax.set_xlabel('X (m)')
-    ax.set_ylabel('Y (m)')
-    ax.legend(fontsize=9)
+    # ---- 2D path ----
+    _draw_env(ax_2d, env, show_names=False)
+    ax_2d.plot(true[:n, 0], true[:n, 1], 'g-',  lw=2.0,
+               label='Gerçek (Ground Truth)', zorder=5)
+    ax_2d.plot(ekf[:n, 0],  ekf[:n, 1],  'b--', lw=1.5,
+               label='EKF Tahmini', zorder=4)
+    ax_2d.plot(dr[:n, 0],   dr[:n, 1],   'r:',  lw=1.5,
+               label='Dead Reckoning', zorder=3)
 
-    # Time series x(t)
-    ax = axes[1]
-    ax.plot(t, true[:n, 0], 'g-',  lw=1.8, label='x Gerçek')
-    ax.plot(t, ekf[:n, 0],  'b--', lw=1.5, label='x EKF')
-    ax.plot(t, dr[:n, 0],   'r:',  lw=1.5, label='x Dead Reckoning')
-    ax.set_title('Lokalizasyon — x(t) Zaman Serisi', fontsize=12, fontweight='bold')
-    ax.set_xlabel('Zaman (s)')
-    ax.set_ylabel('x Konumu (m)')
-    ax.legend(fontsize=9)
-    ax.grid(True, alpha=0.35)
+    # EKF covariance ellipses (95% confidence, every 3rd stored point)
+    if cov_history:
+        for i, (step, pos, cov) in enumerate(cov_history):
+            if i % 3 == 0:
+                _draw_cov_ellipse(
+                    ax_2d, pos, cov, n_std=2.0,
+                    facecolor='#3498db', alpha=0.10,
+                    edgecolor='#2980b9', linewidth=0.6, zorder=2)
+        # Legend proxy
+        ell_proxy = mpatches.Patch(facecolor='#3498db', alpha=0.35,
+                                   edgecolor='#2980b9', label='EKF 95% güven elipsi')
+        handles, labels = ax_2d.get_legend_handles_labels()
+        ax_2d.legend(handles=handles + [ell_proxy], fontsize=8, loc='upper left')
+    else:
+        ax_2d.legend(fontsize=8)
 
-    plt.suptitle('Lokalizasyon Sonuçları: Ground Truth vs EKF vs Dead Reckoning',
-                 fontsize=13, fontweight='bold')
-    plt.tight_layout()
+    ax_2d.set_title('Lokalizasyon — 2D Yol + EKF Kovaryans Ellipsi',
+                    fontsize=11, fontweight='bold')
+    ax_2d.set_xlabel('X (m)')
+    ax_2d.set_ylabel('Y (m)')
+
+    # ---- Time series: x(t), y(t), θ(t) ----
+    series = [
+        (ax_x,  0, 'x (m)',   'x(t)'),
+        (ax_y,  1, 'y (m)',   'y(t)'),
+        (ax_th, 2, 'θ (rad)', 'θ(t)'),
+    ]
+    for ax, col, ylabel, title in series:
+        d_true = true[:n, col]
+        d_ekf  = ekf[:n, col]
+        d_dr   = dr[:n, col]
+        if col == 2:   # normalise angle to [-π, π]
+            d_true = np.arctan2(np.sin(d_true), np.cos(d_true))
+            d_ekf  = np.arctan2(np.sin(d_ekf),  np.cos(d_ekf))
+            d_dr   = np.arctan2(np.sin(d_dr),   np.cos(d_dr))
+        ax.plot(t, d_true, 'g-',  lw=1.8, label='Gerçek')
+        ax.plot(t, d_ekf,  'b--', lw=1.5, label='EKF')
+        ax.plot(t, d_dr,   'r:',  lw=1.5, label='DR')
+        ax.set_ylabel(ylabel, fontsize=9)
+        ax.set_title(title, fontsize=10, fontweight='bold')
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=7, loc='upper right')
+
+    ax_th.set_xlabel('Zaman (s)')
+
+    fig.suptitle('Lokalizasyon Sonuçları: Ground Truth vs EKF vs Dead Reckoning',
+                 fontsize=13, fontweight='bold', y=1.01)
     _save(fig, '04_localization.png')
     plt.close(fig)
 
@@ -215,10 +260,10 @@ def plot_errors(true_path, ekf_path, dr_path, dt=0.1):
 
     ax.axhline(rmse_dr,  color='#e74c3c', linestyle=':', lw=1.0, alpha=0.6)
     ax.axhline(rmse_ekf, color='#2980b9', linestyle=':', lw=1.0, alpha=0.6)
-    ax.text(t[-1] * 0.02, rmse_dr  + 0.02, f'RMSE_DR  = {rmse_dr:.3f} m',
-            color='#e74c3c', fontsize=9)
-    ax.text(t[-1] * 0.02, rmse_ekf + 0.02, f'RMSE_EKF = {rmse_ekf:.3f} m',
-            color='#2980b9', fontsize=9)
+    ax.text(t[-1] * 0.02, rmse_dr  + 0.05,
+            f'RMSE_DR  = {rmse_dr:.3f} m', color='#e74c3c', fontsize=9)
+    ax.text(t[-1] * 0.02, rmse_ekf + 0.05,
+            f'RMSE_EKF = {rmse_ekf:.3f} m', color='#2980b9', fontsize=9)
 
     ax.set_title('Konum Hatası Analizi: Dead Reckoning vs Extended Kalman Filter',
                  fontsize=13, fontweight='bold')
@@ -234,27 +279,40 @@ def plot_errors(true_path, ekf_path, dr_path, dt=0.1):
 
 
 # ------------------------------------------------------------------ #
-#  Animation                                                          #
+#  Animation — robot body (circle + heading arrow) + LiDAR           #
 # ------------------------------------------------------------------ #
 
 def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar, dt=0.1):
     fig, ax = plt.subplots(figsize=(9, 9))
     _draw_env(ax, env, show_names=False)
-    ax.set_title('FrostBot — Pizza Fabrikası Simülasyonu', fontsize=11, fontweight='bold')
     ax.set_xlabel('X (m)')
     ax.set_ylabel('Y (m)')
 
     true_arr = np.array(true_path)
     ekf_arr  = np.array(ekf_path)
 
-    true_line, = ax.plot([], [], 'g-',  lw=1.5, label='Gerçek Yol',   zorder=5)
-    ekf_line,  = ax.plot([], [], 'b--', lw=1.0, label='EKF Tahmini',  zorder=4)
-    robot_dot, = ax.plot([], [], 'go',  ms=10,  zorder=7)
-    ekf_dot,   = ax.plot([], [], 'b^',  ms=7,   zorder=6, label='EKF Konum')
-    lidar_sc   = ax.scatter([], [], s=2, c='cyan', alpha=0.45, zorder=3, label='LiDAR')
-    time_txt   = ax.text(0.02, 0.97, '', transform=ax.transAxes,
-                         va='top', fontsize=9, color='#2c3e50',
-                         bbox=dict(facecolor='white', alpha=0.6, edgecolor='none'))
+    # Paths
+    true_line, = ax.plot([], [], 'g-',  lw=1.5, label='Gerçek Yol',  zorder=4)
+    ekf_line,  = ax.plot([], [], 'b--', lw=1.0, label='EKF Tahmini', zorder=3)
+
+    # Robot body — circle drawn as closed parametric curve
+    _circle_t  = np.linspace(0, 2 * np.pi, 24)
+    R_body     = 0.6   # robot radius (m)
+    robot_body, = ax.plot([], [], color='#27ae60', lw=2.0, zorder=7)
+    robot_head, = ax.plot([], [], color='#27ae60', lw=2.5, zorder=8)  # heading line
+
+    # EKF position marker
+    ekf_dot, = ax.plot([], [], 'b^', ms=7, zorder=6, label='EKF Konum')
+
+    # LiDAR point cloud
+    lidar_sc = ax.scatter([], [], s=2, c='cyan', alpha=0.45, zorder=2, label='LiDAR')
+
+    # Time label
+    time_txt = ax.text(0.02, 0.97, '', transform=ax.transAxes, va='top',
+                       fontsize=9, color='#2c3e50',
+                       bbox=dict(facecolor='white', alpha=0.6, edgecolor='none'))
+
+    ax.set_title('FrostBot — Pizza Fabrikası Simülasyonu', fontsize=11, fontweight='bold')
     ax.legend(loc='upper right', fontsize=8)
 
     snap_dict = {s: nd for s, _td, nd in lidar_snapshots}
@@ -263,19 +321,33 @@ def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar, dt=0.1):
     frames    = list(range(0, N, stride))
 
     def _update(fi):
-        step = frames[fi]
+        step        = frames[fi]
+        x, y, theta = true_arr[step]
+
+        # Paths
         true_line.set_data(true_arr[:step+1, 0], true_arr[:step+1, 1])
         ekf_line.set_data(ekf_arr[:step+1, 0],   ekf_arr[:step+1, 1])
-        robot_dot.set_data([true_arr[step, 0]], [true_arr[step, 1]])
-        ekf_dot.set_data([ekf_arr[step, 0]],   [ekf_arr[step, 1]])
 
+        # Robot body (circle)
+        bx = x + R_body * np.cos(_circle_t)
+        by = y + R_body * np.sin(_circle_t)
+        robot_body.set_data(bx, by)
+
+        # Heading arrow (line from centre to front)
+        hx = [x, x + R_body * 1.6 * np.cos(theta)]
+        hy = [y, y + R_body * 1.6 * np.sin(theta)]
+        robot_head.set_data(hx, hy)
+
+        # EKF marker
+        ekf_dot.set_data([ekf_arr[step, 0]], [ekf_arr[step, 1]])
+
+        # LiDAR
         nearest = min(snap_dict.keys(), key=lambda s: abs(s - step))
-        nd      = snap_dict[nearest]
-        px, py  = lidar.to_cartesian(true_arr[step], nd)
+        px, py  = lidar.to_cartesian(true_arr[step], snap_dict[nearest])
         lidar_sc.set_offsets(np.c_[px, py])
 
         time_txt.set_text(f't = {step * dt:.1f} s')
-        return true_line, ekf_line, robot_dot, ekf_dot, lidar_sc, time_txt
+        return true_line, ekf_line, robot_body, robot_head, ekf_dot, lidar_sc, time_txt
 
     anim = animation.FuncAnimation(
         fig, _update, frames=len(frames), interval=50, blit=True)

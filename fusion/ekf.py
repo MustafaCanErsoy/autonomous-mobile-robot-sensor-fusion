@@ -64,3 +64,7 @@ class ExtendedKalmanFilter:
         """Update with a virtual theta measurement from IMU integration."""
         H = np.array([[0.0, 0.0, 1.0]])
         self.update(np.array([z_theta]), H, R if R is not None else self.R_imu)
+
+    def get_xy_covariance(self):
+        """Return the 2×2 [x, y] covariance submatrix."""
+        return self.P[:2, :2].copy()

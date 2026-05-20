@@ -57,6 +57,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     ekf_path        = [ekf.state.copy()]
     dr_path         = [dr.state.copy()]
     lidar_snapshots = []          # (step, true_dist, noisy_dist) every 15 steps
+    cov_history     = []          # (step, xy_pos, 2x2_cov) every 30 steps
     wp_idx          = 0
 
     for step in range(MAX_STEPS):
@@ -102,12 +103,15 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         dr_path.append(dr.state.copy())
         if step % 15 == 0:
             lidar_snapshots.append((step, true_dist.copy(), noisy_dist.copy()))
+        if step % 30 == 0:
+            cov_history.append((step, ekf.state[:2].copy(), ekf.get_xy_covariance()))
 
     return dict(
         true_path=true_path,
         ekf_path=ekf_path,
         dr_path=dr_path,
         lidar_snapshots=lidar_snapshots,
+        cov_history=cov_history,
         env=env,
         lidar=lidar,
     )
@@ -146,7 +150,8 @@ def main():
     plot_lidar(lidar_state, true_d, noisy_d, lidar, env)
 
     # 4 — Localization
-    plot_localization(env, pf['true_path'], pf['ekf_path'], pf['dr_path'])
+    plot_localization(env, pf['true_path'], pf['ekf_path'], pf['dr_path'],
+                      cov_history=pf['cov_history'])
 
     # 5 — Error analysis
     rmse_ekf, rmse_dr, mae_ekf, mae_dr = plot_errors(
