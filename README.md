@@ -79,7 +79,8 @@ Pre-generated results are available in the [`results/`](results/) folder.
 - **EKF covariance ellipses** — visualised 95% confidence regions
 - **Dead reckoning** baseline for error comparison
 - **Two navigation algorithms**: Potential Field vs Bug2 (with stuck-escape mechanism)
-- **Dynamic forklift obstacle** — moves at 0.4 m/s along a horizontal corridor, included in collision detection and LiDAR scans
+- **Two dynamic obstacles** — Forklift (horizontal, 0.4 m/s) and Palet Robotu (vertical, 0.45 m/s); both included in collision detection and LiDAR scans
+- **Magnetometer blackout zones** — near Fırın and Soğutma Ünitesi (5 m radius), magnetometer signal lost; EKF falls back to IMU-only theta correction in these areas
 - **LiDAR hit-point heatmap** — cumulative sensor density map over the full mission, revealing coverage gaps and high-traffic zones
 - **Animated simulation** with robot body (circle + heading arrow), live LiDAR beams, and moving forklift
 - **Quantitative error analysis**: RMSE and MAE
@@ -90,7 +91,7 @@ Pre-generated results are available in the [`results/`](results/) folder.
 
 ```
 ├── main.py               # Entry point — runs both simulations, saves all outputs
-├── environment.py        # Factory map: 15 static obstacles + dynamic forklift, vectorised ray casting
+├── environment.py        # Factory map: 15 static obstacles + Forklift + PaletRobot, magnetometer blackout zones
 ├── robot.py              # Differential-drive kinematic model
 ├── sensors/
 │   ├── lidar.py          # 2D LiDAR with noise zones and obstacle clustering

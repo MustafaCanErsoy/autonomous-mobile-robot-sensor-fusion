@@ -41,6 +41,16 @@ def _draw_env(ax, env, show_names=True):
                 ax.text(obs['x'], obs['y'] + obs['r'] + 0.4,
                         obs['name'], ha='center', va='bottom', fontsize=5)
 
+    # Magnetometer blackout zones
+    for obs in env.obstacles:
+        if obs['name'] in env._MAG_BLACKOUT and obs['type'] == 'rect':
+            cx = obs['x'] + obs['w'] / 2
+            cy = obs['y'] + obs['h'] / 2
+            zone = plt.Circle((cx, cy), env._MAG_BLACKOUT_R,
+                               color='#8e44ad', alpha=0.10, zorder=1,
+                               linestyle='--', linewidth=0.8, fill=True)
+            ax.add_patch(zone)
+
     ax.plot(*env.start, 'o', ms=10, color='#27ae60', label='Başlangıç', zorder=6)
 
     colors_wp = ['#f39c12', '#e67e22', '#e74c3c']
@@ -87,7 +97,15 @@ def plot_environment(env):
     red_p  = mpatches.Patch(color='#c0392b', alpha=0.72, label='Makineler (Yüksek Gürültü Bölgesi)')
     blue_p = mpatches.Patch(color='#2980b9', alpha=0.72, label='Konveyörler / Ekipman')
     grey_p = mpatches.Patch(color='#7f8c8d', alpha=0.85, label='Fabrika Sütunları')
-    ax.legend(handles=[red_p, blue_p, grey_p], loc='upper left', fontsize=8)
+    mag_p  = mpatches.Patch(color='#8e44ad', alpha=0.30, label='Pusula Sinyal Kesintisi')
+    # Forklift + Palet routes
+    fk = env.forklift
+    ax.plot([fk.PATH_XMIN, fk.PATH_XMAX], [fk.PATH_Y, fk.PATH_Y],
+            '--', color='#f39c12', lw=1.2, alpha=0.6, label='Forklift rotası')
+    pl = env.palet
+    ax.plot([pl.PATH_X, pl.PATH_X], [pl.PATH_YMIN, pl.PATH_YMAX],
+            '--', color='#9b59b6', lw=1.2, alpha=0.6, label='Palet Robotu rotası')
+    ax.legend(handles=[red_p, blue_p, grey_p, mag_p], loc='upper left', fontsize=8)
 
     ax.set_title('FrostBot — Pizza Fabrikası 2D Ortam Haritası', fontsize=14, fontweight='bold')
     ax.set_xlabel('X (m)')
@@ -226,14 +244,31 @@ def plot_localization(env, true_path, ekf_path, dr_path,
             d_true = np.arctan2(np.sin(d_true), np.cos(d_true))
             d_ekf  = np.arctan2(np.sin(d_ekf),  np.cos(d_ekf))
             d_dr   = np.arctan2(np.sin(d_dr),   np.cos(d_dr))
-            # Raw magnetometer readings in θ(t) plot
+            # Raw magnetometer readings — skip None (blackout) steps
             if mag_history:
                 m = min(len(mag_history), n - 1)
-                t_mag = np.arange(1, m + 1) * dt   # mag measured at step+1
-                mag_arr = np.arctan2(np.sin(mag_history[:m]),
-                                     np.cos(mag_history[:m]))
-                ax.scatter(t_mag[::4], mag_arr[::4], s=4, c='#95a5a6',
-                           alpha=0.45, zorder=1, label='Pusula (ham)')
+                valid_t, valid_v, blackout_spans = [], [], []
+                in_blackout, bo_start = False, 0
+                for i, v in enumerate(mag_history[:m]):
+                    t_i = (i + 1) * dt
+                    if v is None:
+                        if not in_blackout:
+                            bo_start, in_blackout = t_i, True
+                    else:
+                        if in_blackout:
+                            blackout_spans.append((bo_start, t_i))
+                            in_blackout = False
+                        valid_t.append(t_i)
+                        valid_v.append(np.arctan2(np.sin(v), np.cos(v)))
+                if in_blackout:
+                    blackout_spans.append((bo_start, m * dt))
+                for (t0, t1) in blackout_spans:
+                    ax.axvspan(t0, t1, color='#8e44ad', alpha=0.12, zorder=0)
+                if valid_t:
+                    vt = np.array(valid_t)
+                    vv = np.array(valid_v)
+                    ax.scatter(vt[::4], vv[::4], s=4, c='#95a5a6',
+                               alpha=0.45, zorder=1, label='Pusula (ham)')
         ax.plot(t, d_true, 'g-',  lw=1.8, label='Gerçek')
         ax.plot(t, d_ekf,  'b--', lw=1.5, label='EKF')
         ax.plot(t, d_dr,   'r:',  lw=1.5, label='DR')
@@ -340,7 +375,7 @@ def plot_lidar_heatmap(env, heatmap):
 # ------------------------------------------------------------------ #
 
 def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar,
-                     forklift_history=None, dt=0.1):
+                     forklift_history=None, palet_history=None, dt=0.1):
     fig, ax = plt.subplots(figsize=(9, 9))
     _draw_env(ax, env, show_names=False)
     ax.set_xlabel('X (m)')
@@ -365,15 +400,20 @@ def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar,
     # LiDAR point cloud
     lidar_sc = ax.scatter([], [], s=2, c='cyan', alpha=0.45, zorder=2, label='LiDAR')
 
-    # Forklift body
-    _fk_t     = np.linspace(0, 2 * np.pi, 20)
+    # Dynamic obstacle bodies (parametric circles)
+    _dyn_t    = np.linspace(0, 2 * np.pi, 20)
     fk_body,  = ax.plot([], [], color='#f39c12', lw=2.5, zorder=7, label='Forklift')
     fk_dot,   = ax.plot([], [], 'o', color='#f39c12', ms=4, zorder=8)
+    pl_body,  = ax.plot([], [], color='#9b59b6', lw=2.5, zorder=7, label='Palet Robotu')
+    pl_dot,   = ax.plot([], [], 'o', color='#9b59b6', ms=4, zorder=8)
 
-    # Draw forklift route as static dashed line
+    # Static route markers
     fk = env.forklift
     ax.plot([fk.PATH_XMIN, fk.PATH_XMAX], [fk.PATH_Y, fk.PATH_Y],
             '--', color='#f39c12', lw=0.8, alpha=0.4)
+    pl = env.palet
+    ax.plot([pl.PATH_X, pl.PATH_X], [pl.PATH_YMIN, pl.PATH_YMAX],
+            '--', color='#9b59b6', lw=0.8, alpha=0.4)
 
     # Time label
     time_txt = ax.text(0.02, 0.97, '', transform=ax.transAxes, va='top',
@@ -417,13 +457,20 @@ def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar,
         # Forklift
         if forklift_history and step < len(forklift_history):
             fkx, fky = forklift_history[step]
-            fk_body.set_data(fkx + fk.RADIUS * np.cos(_fk_t),
-                             fky + fk.RADIUS * np.sin(_fk_t))
+            fk_body.set_data(fkx + fk.RADIUS * np.cos(_dyn_t),
+                             fky + fk.RADIUS * np.sin(_dyn_t))
             fk_dot.set_data([fkx], [fky])
+
+        # Palet Robotu
+        if palet_history and step < len(palet_history):
+            plx, ply = palet_history[step]
+            pl_body.set_data(plx + pl.RADIUS * np.cos(_dyn_t),
+                             ply + pl.RADIUS * np.sin(_dyn_t))
+            pl_dot.set_data([plx], [ply])
 
         time_txt.set_text(f't = {step * dt:.1f} s')
         return (true_line, ekf_line, robot_body, robot_head,
-                ekf_dot, lidar_sc, fk_body, fk_dot, time_txt)
+                ekf_dot, lidar_sc, fk_body, fk_dot, pl_body, pl_dot, time_txt)
 
     anim = animation.FuncAnimation(
         fig, _update, frames=len(frames), interval=50, blit=True)

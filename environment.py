@@ -1,6 +1,31 @@
 import numpy as np
 
 
+class PaletRobot:
+    """Second dynamic obstacle — moves vertically along a corridor at x=20."""
+
+    PATH_X    = 20.0   # m  (fixed x)
+    PATH_YMIN = 12.0   # m
+    PATH_YMAX = 31.0   # m
+    SPEED     =  0.45  # m/s
+    RADIUS    =  0.7   # m
+
+    def __init__(self):
+        self.x    = self.PATH_X
+        self.y    = self.PATH_YMIN
+        self.r    = self.RADIUS
+        self._dir = 1   # +1 → up, -1 → down
+
+    def step(self, dt):
+        self.y += self._dir * self.SPEED * dt
+        if self.y >= self.PATH_YMAX:
+            self.y    = self.PATH_YMAX
+            self._dir = -1
+        elif self.y <= self.PATH_YMIN:
+            self.y    = self.PATH_YMIN
+            self._dir = 1
+
+
 class Forklift:
     """Dynamic obstacle — moves back and forth along a horizontal corridor."""
 
@@ -39,12 +64,28 @@ class Environment:
             np.array([45.0, 45.0]),
         ]
         self.waypoint_names = ["Kalite Kontrol", "Ambalaj", "Soğuk Depo"]
-        self.forklift = Forklift()
+        self.forklift   = Forklift()
+        self.palet      = PaletRobot()
         self._build()
+
+    # Obstacle names whose EM field wipes the magnetometer signal
+    _MAG_BLACKOUT = {'Fırın', 'Soğutma Ünitesi'}
+    _MAG_BLACKOUT_R = 5.0   # m
 
     def step(self, dt):
         """Advance dynamic obstacles by one timestep."""
         self.forklift.step(dt)
+        self.palet.step(dt)
+
+    def is_mag_blackout(self, x, y):
+        """Return True when (x,y) is inside a magnetometer dead zone."""
+        for obs in self.obstacles:
+            if obs['name'] in self._MAG_BLACKOUT and obs['type'] == 'rect':
+                cx = obs['x'] + obs['w'] / 2
+                cy = obs['y'] + obs['h'] / 2
+                if np.hypot(x - cx, y - cy) < self._MAG_BLACKOUT_R:
+                    return True
+        return False
 
     def _build(self):
         # (x, y, w, h, name, noise_zone) — rectangular obstacles
@@ -94,6 +135,8 @@ class Environment:
                 return True
         if np.hypot(x - self.forklift.x, y - self.forklift.y) <= self.forklift.r + margin:
             return True
+        if np.hypot(x - self.palet.x, y - self.palet.y) <= self.palet.r + margin:
+            return True
         return False
 
     def noise_multiplier(self, x, y):
@@ -133,9 +176,11 @@ class Environment:
                 t = self._slab_circle(dx, dy, ox, oy, obs)
             dist = np.minimum(dist, t)
 
-        # Dynamic obstacle: forklift
+        # Dynamic obstacles
         fk = {'x': self.forklift.x, 'y': self.forklift.y, 'r': self.forklift.r}
         dist = np.minimum(dist, self._slab_circle(dx, dy, ox, oy, fk))
+        pl = {'x': self.palet.x, 'y': self.palet.y, 'r': self.palet.r}
+        dist = np.minimum(dist, self._slab_circle(dx, dy, ox, oy, pl))
 
         return np.clip(dist, 0.0, max_range)
 

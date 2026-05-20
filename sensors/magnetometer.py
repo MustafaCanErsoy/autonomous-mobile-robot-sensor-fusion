@@ -14,8 +14,10 @@ class Magnetometer:
         self.theta_noise_std = theta_noise_std
 
     def measure(self, robot, env):
-        """Return noisy absolute heading (rad)."""
+        """Return noisy absolute heading (rad), or None when in a blackout zone."""
         x, y, _ = robot.state
+        if env.is_mag_blackout(x, y):
+            return None
         mult  = env.noise_multiplier(x, y)
         noise = np.random.normal(0.0, self.theta_noise_std * mult)
         return np.arctan2(np.sin(robot.state[2] + noise),

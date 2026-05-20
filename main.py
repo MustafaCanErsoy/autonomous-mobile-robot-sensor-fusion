@@ -70,8 +70,9 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     lidar_snapshots  = []          # (step, true_dist, noisy_dist) every 15 steps
     cov_history      = []          # (step, xy_pos, 2x2_cov) every 30 steps
     waypoint_log     = []          # {name, step, time} when each WP is reached
-    forklift_history = [(env.forklift.x, env.forklift.y)]  # (fx, fy) — aligned with true_path
-    mag_history      = []          # raw magnetometer theta readings
+    forklift_history = [(env.forklift.x, env.forklift.y)]  # aligned with true_path
+    palet_history    = [(env.palet.x,    env.palet.y)]
+    mag_history      = []          # raw magnetometer theta readings (None = blackout)
     heatmap          = np.zeros((100, 100))   # LiDAR hit-point density
     wp_idx           = 0
 
@@ -105,10 +106,11 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
 
         # ---- EKF: predict (encoder) + update (IMU) + update (magnetometer) ----
         theta_prev = ekf.state[2]
-        theta_mag  = mag.measure(robot, env)
+        theta_mag  = mag.measure(robot, env)   # None inside blackout zones
         ekf.predict(v_enc, omega_enc, DT)
         ekf.update_theta(theta_prev + omega_imu * DT)
-        ekf.update_theta_mag(theta_mag)
+        if theta_mag is not None:
+            ekf.update_theta_mag(theta_mag)
 
         # ---- Dead reckoning (encoder only) ----
         dr.step(v_enc, omega_enc, DT)
@@ -127,6 +129,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         ekf_path.append(ekf.state.copy())
         dr_path.append(dr.state.copy())
         forklift_history.append((env.forklift.x, env.forklift.y))
+        palet_history.append((env.palet.x, env.palet.y))
         mag_history.append(theta_mag)
 
         # LiDAR heatmap — accumulate hit points (exclude max-range beams)
@@ -152,6 +155,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         cov_history=cov_history,
         waypoint_log=waypoint_log,
         forklift_history=forklift_history,
+        palet_history=palet_history,
         mag_history=mag_history,
         heatmap=heatmap,
         env=env,
@@ -226,7 +230,8 @@ def main():
 
     print("\nAnimasyon oluşturuluyor (bu birkaç dakika sürebilir)...")
     create_animation(env, pf['true_path'], pf['ekf_path'],
-                     pf['lidar_snapshots'], lidar, pf['forklift_history'])
+                     pf['lidar_snapshots'], lidar,
+                     pf['forklift_history'], pf['palet_history'])
 
     print("\n" + "=" * 55)
     print("  Tüm çıktılar 'outputs/' klasörüne kaydedildi.")
