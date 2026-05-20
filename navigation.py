@@ -91,18 +91,22 @@ class Bug2Nav:
     MAX_W         = 1.5
     OBS_THRESHOLD = 1.3   # m — front obstacle triggers boundary mode
     WALL_DIST     = 1.5   # m — desired distance to right-side wall
+    WALL_TIMEOUT  = 120   # steps — force GO_TO_GOAL if stuck in wall-follow
+    M_LINE_TOL    = 1.8   # m — M-line crossing tolerance
 
     def __init__(self, start):
-        self.start      = np.array(start, dtype=float)
-        self._mode      = 'GO_TO_GOAL'
-        self._hit_point = None
-        self._min_dist  = np.inf
+        self.start       = np.array(start, dtype=float)
+        self._mode       = 'GO_TO_GOAL'
+        self._hit_point  = None
+        self._min_dist   = np.inf
+        self._wall_steps = 0
 
     def reset(self, new_start):
-        self.start      = np.array(new_start, dtype=float)
-        self._mode      = 'GO_TO_GOAL'
-        self._hit_point = None
-        self._min_dist  = np.inf
+        self.start       = np.array(new_start, dtype=float)
+        self._mode       = 'GO_TO_GOAL'
+        self._hit_point  = None
+        self._min_dist   = np.inf
+        self._wall_steps = 0
 
     def compute(self, state, goal, distances, angles):
         x, y, theta = state
@@ -115,6 +119,7 @@ class Bug2Nav:
         front_min   = float(np.min([distances[i] for i in front_idx]))
 
         if self._mode == 'GO_TO_GOAL':
+            self._wall_steps = 0
             if front_min < self.OBS_THRESHOLD:
                 self._mode      = 'FOLLOW_WALL'
                 self._hit_point = np.array([x, y])
@@ -122,11 +127,19 @@ class Bug2Nav:
             return self._go_to_goal(theta, gx - x, gy - y, d_goal)
 
         # FOLLOW_WALL
-        self._min_dist = min(self._min_dist, d_goal)
-        if (front_min > self.OBS_THRESHOLD + 0.4 and
-                d_goal < self._min_dist - 0.3 and
-                self._on_m_line(x, y, goal)):
-            self._mode = 'GO_TO_GOAL'
+        self._wall_steps  += 1
+        self._min_dist     = min(self._min_dist, d_goal)
+
+        # Exit condition 1: M-line re-crossed and closer to goal
+        m_line_exit = (front_min > self.OBS_THRESHOLD + 0.4 and
+                       d_goal < self._min_dist - 0.2 and
+                       self._on_m_line(x, y, goal))
+        # Exit condition 2: timeout — robot stuck too long in boundary mode
+        timeout_exit = self._wall_steps > self.WALL_TIMEOUT
+
+        if m_line_exit or timeout_exit:
+            self._mode       = 'GO_TO_GOAL'
+            self._wall_steps = 0
             return self._go_to_goal(theta, gx - x, gy - y, d_goal)
 
         return self._follow_wall(distances, n)
@@ -160,4 +173,4 @@ class Bug2Nav:
         if length < 0.01:
             return True
         dist = abs((gy - sy) * x - (gx - sx) * y + gx * sy - gy * sx) / length
-        return dist < 0.9
+        return dist < self.M_LINE_TOL
