@@ -166,7 +166,8 @@ def plot_lidar(robot_state, true_dist, noisy_dist, lidar, env):
 #  4. Localization — 2D path + EKF ellipses + x/y/θ time series      #
 # ------------------------------------------------------------------ #
 
-def plot_localization(env, true_path, ekf_path, dr_path, cov_history=None, dt=0.1):
+def plot_localization(env, true_path, ekf_path, dr_path,
+                      cov_history=None, mag_history=None, dt=0.1):
     fig = plt.figure(figsize=(20, 10))
     gs  = fig.add_gridspec(3, 2, width_ratios=[1.3, 1],
                            hspace=0.55, wspace=0.35)
@@ -221,10 +222,18 @@ def plot_localization(env, true_path, ekf_path, dr_path, cov_history=None, dt=0.
         d_true = true[:n, col]
         d_ekf  = ekf[:n, col]
         d_dr   = dr[:n, col]
-        if col == 2:   # normalise angle to [-π, π]
+        if col == 2:
             d_true = np.arctan2(np.sin(d_true), np.cos(d_true))
             d_ekf  = np.arctan2(np.sin(d_ekf),  np.cos(d_ekf))
             d_dr   = np.arctan2(np.sin(d_dr),   np.cos(d_dr))
+            # Raw magnetometer readings in θ(t) plot
+            if mag_history:
+                m = min(len(mag_history), n - 1)
+                t_mag = np.arange(1, m + 1) * dt   # mag measured at step+1
+                mag_arr = np.arctan2(np.sin(mag_history[:m]),
+                                     np.cos(mag_history[:m]))
+                ax.scatter(t_mag[::4], mag_arr[::4], s=4, c='#95a5a6',
+                           alpha=0.45, zorder=1, label='Pusula (ham)')
         ax.plot(t, d_true, 'g-',  lw=1.8, label='Gerçek')
         ax.plot(t, d_ekf,  'b--', lw=1.5, label='EKF')
         ax.plot(t, d_dr,   'r:',  lw=1.5, label='DR')
@@ -235,8 +244,9 @@ def plot_localization(env, true_path, ekf_path, dr_path, cov_history=None, dt=0.
 
     ax_th.set_xlabel('Zaman (s)')
 
-    fig.suptitle('Lokalizasyon Sonuçları: Ground Truth vs EKF vs Dead Reckoning',
-                 fontsize=13, fontweight='bold', y=1.01)
+    fig.suptitle(
+        'Lokalizasyon Sonuçları: Ground Truth vs EKF (Enkoder+IMU+Pusula) vs Dead Reckoning',
+        fontsize=12, fontweight='bold', y=1.01)
     _save(fig, '04_localization.png')
     plt.close(fig)
 

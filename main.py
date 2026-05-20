@@ -17,6 +17,7 @@ from robot import DifferentialDriveRobot
 from sensors.lidar import LiDAR
 from sensors.imu import IMU
 from sensors.encoder import WheelEncoder
+from sensors.magnetometer import Magnetometer
 from fusion.ekf import ExtendedKalmanFilter
 from localization import DeadReckoning
 from navigation import PotentialFieldNav, Bug2Nav
@@ -47,12 +48,14 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     lidar  = LiDAR(n_beams=180, max_range=12.0, noise_std=0.05)
     imu    = IMU(omega_noise_std=0.015)
     enc    = WheelEncoder(noise_std=0.03)
+    mag    = Magnetometer(theta_noise_std=0.05)
 
     ekf = ExtendedKalmanFilter(
         initial_state=[env.start[0], env.start[1], np.pi / 4],
         P0=np.diag([0.1, 0.1, 0.05]),
         Q=np.diag([0.005, 0.005, 0.002]),
         R_imu=np.array([[0.003]]),
+        R_mag=np.array([[0.008]]),
     )
     dr = DeadReckoning(env.start[0], env.start[1], np.pi / 4)
 
@@ -68,6 +71,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     cov_history      = []          # (step, xy_pos, 2x2_cov) every 30 steps
     waypoint_log     = []          # {name, step, time} when each WP is reached
     forklift_history = [(env.forklift.x, env.forklift.y)]  # (fx, fy) — aligned with true_path
+    mag_history      = []          # raw magnetometer theta readings
     heatmap          = np.zeros((100, 100))   # LiDAR hit-point density
     wp_idx           = 0
 
@@ -99,10 +103,12 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         omega_imu             = imu.measure(robot, env)
         v_enc, omega_enc      = enc.measure(robot, env)
 
-        # ---- EKF: predict (encoder) + update (IMU) ----
+        # ---- EKF: predict (encoder) + update (IMU) + update (magnetometer) ----
         theta_prev = ekf.state[2]
+        theta_mag  = mag.measure(robot, env)
         ekf.predict(v_enc, omega_enc, DT)
         ekf.update_theta(theta_prev + omega_imu * DT)
+        ekf.update_theta_mag(theta_mag)
 
         # ---- Dead reckoning (encoder only) ----
         dr.step(v_enc, omega_enc, DT)
@@ -121,6 +127,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         ekf_path.append(ekf.state.copy())
         dr_path.append(dr.state.copy())
         forklift_history.append((env.forklift.x, env.forklift.y))
+        mag_history.append(theta_mag)
 
         # LiDAR heatmap — accumulate hit points (exclude max-range beams)
         mask = noisy_dist < lidar.max_range * 0.95
@@ -145,6 +152,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         cov_history=cov_history,
         waypoint_log=waypoint_log,
         forklift_history=forklift_history,
+        mag_history=mag_history,
         heatmap=heatmap,
         env=env,
         lidar=lidar,
@@ -187,7 +195,7 @@ def main():
 
     # 4 — Localization
     plot_localization(env, pf['true_path'], pf['ekf_path'], pf['dr_path'],
-                      cov_history=pf['cov_history'], dt=DT)
+                      cov_history=pf['cov_history'], mag_history=pf['mag_history'], dt=DT)
 
     # 5 — Error analysis
     rmse_ekf, rmse_dr, mae_ekf, mae_dr = plot_errors(

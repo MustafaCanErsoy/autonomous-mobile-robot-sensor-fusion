@@ -12,8 +12,9 @@
 A differential-drive robot navigates a **50 × 50 m frozen pizza factory** autonomously, transporting pizzas from the production line to cold storage. The factory contains heavy machinery, conveyor belts, and structural pillars that block direct paths and emit electromagnetic interference — making GPS unusable. The robot relies solely on:
 
 - **LiDAR** — 180-beam 2D scan, max range 12 m
-- **IMU** — angular velocity measurement  
+- **IMU** — angular velocity measurement
 - **Wheel encoder** — linear and angular velocity from wheel speeds
+- **Magnetometer** — absolute heading (theta) measurement, 3× noise in EMI zones
 
 The robot must reach three waypoints in order:
 
@@ -72,8 +73,9 @@ Pre-generated results are available in the [`results/`](results/) folder.
 ## Features
 
 - **Non-holonomic differential-drive** kinematic model
-- **3-sensor simulation** with zone-dependent Gaussian noise (LiDAR, IMU, encoder)
-- **Extended Kalman Filter (EKF)** — encoder prediction + IMU update, Jacobian linearisation
+- **4-sensor simulation** with zone-dependent Gaussian noise (LiDAR, IMU, encoder, magnetometer)
+- **Extended Kalman Filter (EKF)** — encoder prediction + IMU update + magnetometer update, Jacobian linearisation
+- **3-stage EKF fusion**: encoder (predict) → IMU angular rate (update 1) → magnetometer absolute heading (update 2)
 - **EKF covariance ellipses** — visualised 95% confidence regions
 - **Dead reckoning** baseline for error comparison
 - **Two navigation algorithms**: Potential Field vs Bug2 (with stuck-escape mechanism)
@@ -93,7 +95,8 @@ Pre-generated results are available in the [`results/`](results/) folder.
 ├── sensors/
 │   ├── lidar.py          # 2D LiDAR with noise zones and obstacle clustering
 │   ├── imu.py            # Angular velocity sensor
-│   └── encoder.py        # Wheel encoder (v, omega measurement)
+│   ├── encoder.py        # Wheel encoder (v, omega measurement)
+│   └── magnetometer.py   # Absolute heading sensor (drift-free, EMI-affected)
 ├── fusion/
 │   └── ekf.py            # Extended Kalman Filter (predict + update)
 ├── localization.py       # Dead reckoning + RMSE/MAE error metrics
@@ -122,9 +125,13 @@ P'  = F·P·Fᵀ + Q
 
 F is the Jacobian of the nonlinear motion model — this is what makes it *Extended* KF rather than standard KF.
 
-**Update step** (IMU angular velocity):
+**Update step 1** (IMU angular velocity):
 
 The IMU provides a virtual theta observation: `z = θ_prev + ω_imu·dt`. Innovation `z − Hx` captures the discrepancy between IMU and encoder angular rates and corrects theta drift.
+
+**Update step 2** (Magnetometer absolute heading):
+
+The magnetometer measures theta directly in the world frame: `z = θ_true + noise`. Unlike the IMU, it does not integrate and therefore never drifts — but it is noisier (σ = 0.05 rad vs 0.015 rad/s for IMU). In EMI zones the noise triples. Two sequential EKF updates with different R matrices allow each sensor's confidence to be weighted appropriately.
 
 The EKF covariance matrix P is visualised as 95% confidence ellipses on the localization plot — they grow near high-noise machinery zones and shrink in open corridors.
 
@@ -146,20 +153,20 @@ Pure encoder integration — no fusion. Accumulates drift over time, used as low
 
 | Metric | EKF | Dead Reckoning | Improvement |
 |--------|-----|----------------|-------------|
-| RMSE (m) | **6.132** | 12.752 | **−51.9 %** |
-| MAE (m)  | **4.900** | 10.190 | **−51.9 %** |
+| RMSE (m) | **0.130** | 1.285 | **−89.8 %** |
+| MAE (m)  | **0.127** | 1.002 | **−87.3 %** |
 
-EKF halves the position error vs pure odometry over a 101-second, 63-metre traverse in a GPS-denied environment.
+Three-sensor EKF fusion (encoder + IMU + magnetometer) achieves sub-14 cm RMSE — nearly an order of magnitude better than pure odometry. The magnetometer's drift-free absolute heading anchors the EKF's theta estimate, preventing the angular error accumulation that causes large xy drift in dead reckoning.
 
 ### Navigation Comparison
 
 | Waypoint | PF Time | PF Distance | Bug2 Time | Bug2 Distance |
 |----------|---------|-------------|-----------|---------------|
-| Kalite Kontrol | 18.4 s | 13.2 m | 10.8 s | 12.7 m |
-| Ambalaj | 65.7 s | 38.2 m | 28.7 s | 34.0 m |
-| Soğuk Depo | 101.7 s | 63.4 m | **72.3 s** | 72.6 m |
+| Kalite Kontrol | 18.5 s | 13.3 m | 10.8 s | 12.7 m |
+| Ambalaj | 65.2 s | 38.0 m | 28.7 s | 34.0 m |
+| Soğuk Depo | 101.2 s | 63.3 m | **59.5 s** | 64.2 m |
 
-Bug2 is faster overall (72.3 s vs 101.7 s) because it hugs obstacles directly rather than computing potential fields, but travels a longer total path (72.6 m vs 63.4 m) due to boundary-following detours. Potential Field finds shorter, smoother paths. The dynamic forklift obstacle increases path complexity — both algorithms reroute around it in real time.
+Bug2 is faster overall (59.5 s vs 101.2 s) because it hugs obstacles directly rather than computing potential fields. Potential Field finds shorter, smoother paths overall. The dynamic forklift obstacle increases path complexity — both algorithms reroute around it in real time.
 
 ---
 

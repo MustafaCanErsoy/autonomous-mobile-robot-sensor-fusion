@@ -7,15 +7,18 @@ class ExtendedKalmanFilter:
 
     Predict : uses wheel-encoder (v, omega) as control input via the
               nonlinear kinematic model; linearises with Jacobian F.
-    Update  : corrects theta drift using IMU angular-velocity measurement.
+    Update 1: corrects theta drift using IMU angular-velocity measurement.
               z = theta_prev + omega_imu * dt  (virtual theta observation).
+    Update 2: absolute heading correction from magnetometer.
+              z = theta_mag  (direct, drift-free but noisier).
     """
 
-    def __init__(self, initial_state, P0=None, Q=None, R_imu=None):
+    def __init__(self, initial_state, P0=None, Q=None, R_imu=None, R_mag=None):
         self.state  = np.array(initial_state, dtype=float)   # [x, y, theta]
         self.P      = P0    if P0    is not None else np.diag([0.1, 0.1, 0.05])
         self.Q      = Q     if Q     is not None else np.diag([0.005, 0.005, 0.002])
         self.R_imu  = R_imu if R_imu is not None else np.array([[0.003]])
+        self.R_mag  = R_mag if R_mag is not None else np.array([[0.008]])
 
     # ------------------------------------------------------------------ #
     #  Prediction step                                                     #
@@ -65,6 +68,11 @@ class ExtendedKalmanFilter:
         """Update with a virtual theta measurement from IMU integration."""
         H = np.array([[0.0, 0.0, 1.0]])
         self.update(np.array([z_theta]), H, R if R is not None else self.R_imu)
+
+    def update_theta_mag(self, z_theta, R=None):
+        """Update with a direct absolute heading from magnetometer."""
+        H = np.array([[0.0, 0.0, 1.0]])
+        self.update(np.array([z_theta]), H, R if R is not None else self.R_mag)
 
     def get_xy_covariance(self):
         """Return the 2×2 [x, y] covariance submatrix."""
