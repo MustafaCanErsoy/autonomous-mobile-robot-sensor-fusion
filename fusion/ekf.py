@@ -55,6 +55,7 @@ class ExtendedKalmanFilter:
         self.state = self.state + K.flatten() * innov.flatten()
         self.state[2] = np.arctan2(np.sin(self.state[2]), np.cos(self.state[2]))
         self.P = (np.eye(3) - K @ H) @ self.P
+        self.P = (self.P + self.P.T) / 2.0   # enforce symmetry against float drift
 
     # ------------------------------------------------------------------ #
     #  Convenience: IMU theta update                                      #

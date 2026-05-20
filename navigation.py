@@ -74,7 +74,8 @@ class PotentialFieldNav:
 
         if self._escape_steps > 0:
             sign   = 1 if self._escape_steps % 2 == 0 else -1
-            omega += sign * np.random.uniform(1.0, 1.8)
+            omega  = float(np.clip(sign * np.random.uniform(1.0, 1.8),
+                                   -self.MAX_W, self.MAX_W))
             v      = 0.4
             self._escape_steps -= 1
 

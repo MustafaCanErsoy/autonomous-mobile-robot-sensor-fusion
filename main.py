@@ -17,7 +17,7 @@ from sensors.lidar import LiDAR
 from sensors.imu import IMU
 from sensors.encoder import WheelEncoder
 from fusion.ekf import ExtendedKalmanFilter
-from localization import DeadReckoning, compute_errors
+from localization import DeadReckoning
 from navigation import PotentialFieldNav, Bug2Nav
 from visualization import (
     plot_environment, plot_paths, plot_lidar,
@@ -66,7 +66,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     lidar_snapshots  = []          # (step, true_dist, noisy_dist) every 15 steps
     cov_history      = []          # (step, xy_pos, 2x2_cov) every 30 steps
     waypoint_log     = []          # {name, step, time} when each WP is reached
-    forklift_history = []          # (fx, fy) each step
+    forklift_history = [(env.forklift.x, env.forklift.y)]  # (fx, fy) — aligned with true_path
     heatmap          = np.zeros((100, 100))   # LiDAR hit-point density
     wp_idx           = 0
 
