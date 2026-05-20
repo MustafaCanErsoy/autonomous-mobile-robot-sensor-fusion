@@ -134,7 +134,7 @@ def plot_lidar(robot_state, true_dist, noisy_dist, lidar, env):
     fig, axes = plt.subplots(1, 2, figsize=(16, 7))
 
     for ax, dists, title, pt_color in [
-        (axes[0], true_dist,  'Ham LiDAR (Gürültüsüz)',         '#27ae60'),
+        (axes[0], true_dist,  'Gerçek Mesafe (Gürültüsüz)',       '#27ae60'),
         (axes[1], noisy_dist, 'Gürültülü LiDAR (Ham Ölçüm)',    '#e74c3c'),
     ]:
         _draw_env(ax, env, show_names=False)
@@ -166,7 +166,7 @@ def plot_lidar(robot_state, true_dist, noisy_dist, lidar, env):
 #  4. Localization — 2D path + EKF ellipses + x/y/θ time series      #
 # ------------------------------------------------------------------ #
 
-def plot_localization(env, true_path, ekf_path, dr_path, cov_history=None):
+def plot_localization(env, true_path, ekf_path, dr_path, cov_history=None, dt=0.1):
     fig = plt.figure(figsize=(20, 10))
     gs  = fig.add_gridspec(3, 2, width_ratios=[1.3, 1],
                            hspace=0.55, wspace=0.35)
@@ -179,7 +179,7 @@ def plot_localization(env, true_path, ekf_path, dr_path, cov_history=None):
     ekf  = np.array(ekf_path)
     dr   = np.array(dr_path)
     n    = min(len(true), len(ekf), len(dr))
-    t    = np.arange(n) * 0.1
+    t    = np.arange(n) * dt
 
     # ---- 2D path ----
     _draw_env(ax_2d, env, show_names=False)

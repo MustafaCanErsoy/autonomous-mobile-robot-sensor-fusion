@@ -187,11 +187,11 @@ def main():
 
     # 4 — Localization
     plot_localization(env, pf['true_path'], pf['ekf_path'], pf['dr_path'],
-                      cov_history=pf['cov_history'])
+                      cov_history=pf['cov_history'], dt=DT)
 
     # 5 — Error analysis
     rmse_ekf, rmse_dr, mae_ekf, mae_dr = plot_errors(
-        pf['true_path'], pf['ekf_path'], pf['dr_path'])
+        pf['true_path'], pf['ekf_path'], pf['dr_path'], dt=DT)
 
     print(f"\n  {'Metrik':<12} {'EKF':>10} {'Dead Reckoning':>16}")
     print(f"  {'-'*40}")

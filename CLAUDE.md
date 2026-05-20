@@ -11,22 +11,15 @@ The professor explicitly encourages extra effort beyond the base requirements �
 ## Running the Code
 
 ```bash
-# Run main simulation
 python main.py
-
-# Run with specific scenario config
-python main.py --config scenarios/my_scenario.json
-
-# Generate all required output plots
-python main.py --save-plots
 ```
 
-(These commands are targets; adjust once the entry point is established.)
+Runs both simulations (Potential Field + Bug2), generates all plots, and saves them to `outputs/`. The directory is wiped clean before every run.
 
 ## Required Python Libraries
 
 ```bash
-pip install numpy matplotlib scipy
+pip install numpy matplotlib pillow
 ```
 
 ## Architecture
@@ -40,7 +33,7 @@ The codebase is organized as independent modules wired together in `main.py`:
 | `sensors/lidar.py` | 2D LiDAR scan simulation with noise, distance thresholding, obstacle clustering |
 | `sensors/imu.py` | IMU simulation with noise |
 | `sensors/encoder.py` | Wheel encoder / odometry simulation |
-| `fusion/kalman.py` | Kalman Filter combining ≥2 sensor streams (mandatory) |
+| `fusion/ekf.py` | Extended Kalman Filter combining ≥2 sensor streams (mandatory) |
 | `localization.py` | Dead reckoning + fused estimation; real vs estimated path comparison |
 | `navigation.py` | Obstacle avoidance + goal reaching (Potential Field, VFH, or reactive) |
 | `visualization.py` | All required plots |
