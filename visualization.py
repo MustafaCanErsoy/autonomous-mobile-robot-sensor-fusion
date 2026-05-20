@@ -279,10 +279,58 @@ def plot_errors(true_path, ekf_path, dr_path, dt=0.1):
 
 
 # ------------------------------------------------------------------ #
-#  Animation — robot body (circle + heading arrow) + LiDAR           #
+#  6. LiDAR heatmap                                                   #
 # ------------------------------------------------------------------ #
 
-def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar, dt=0.1):
+def plot_lidar_heatmap(env, heatmap):
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Heatmap — transpose so x→col, y→row; origin='lower' aligns (0,0) bottom-left
+    extent = [0, env.WIDTH, 0, env.HEIGHT]
+    im = ax.imshow(heatmap.T, origin='lower', extent=extent,
+                   cmap='inferno', alpha=0.88, aspect='equal')
+    cbar = plt.colorbar(im, ax=ax, shrink=0.8)
+    cbar.set_label('LiDAR Tarama Yoğunluğu (isabet sayısı)', fontsize=9)
+
+    # Obstacle outlines on top
+    for obs in env.obstacles:
+        if obs['type'] == 'rect':
+            rect = mpatches.Rectangle(
+                (obs['x'], obs['y']), obs['w'], obs['h'],
+                linewidth=1.2, edgecolor='white', facecolor='none', alpha=0.7)
+            ax.add_patch(rect)
+        else:
+            circ = plt.Circle((obs['x'], obs['y']), obs['r'],
+                               color='white', fill=False, linewidth=1.2, alpha=0.7)
+            ax.add_patch(circ)
+
+    # Forklift route
+    fk = env.forklift
+    ax.plot([fk.PATH_XMIN, fk.PATH_XMAX], [fk.PATH_Y, fk.PATH_Y],
+            'w--', lw=1.5, alpha=0.6, label='Forklift rotası')
+
+    ax.plot(*env.start, 'o', ms=10, color='#2ecc71', zorder=6, label='Başlangıç')
+    for i, wp in enumerate(env.waypoints):
+        ax.plot(*wp, '*', ms=12, color='#f1c40f', zorder=6)
+
+    ax.set_xlim(0, env.WIDTH)
+    ax.set_ylim(0, env.HEIGHT)
+    ax.set_title('LiDAR Tarama Isı Haritası\n(Kırmızı = Sık Tarama, Siyah = Hiç Taranmadı)',
+                 fontsize=13, fontweight='bold')
+    ax.set_xlabel('X (m)')
+    ax.set_ylabel('Y (m)')
+    ax.legend(fontsize=8, loc='upper left')
+    plt.tight_layout()
+    _save(fig, '06_lidar_heatmap.png')
+    plt.close(fig)
+
+
+# ------------------------------------------------------------------ #
+#  Animation — robot body (circle + heading arrow) + LiDAR + forklift#
+# ------------------------------------------------------------------ #
+
+def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar,
+                     forklift_history=None, dt=0.1):
     fig, ax = plt.subplots(figsize=(9, 9))
     _draw_env(ax, env, show_names=False)
     ax.set_xlabel('X (m)')
@@ -306,6 +354,16 @@ def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar, dt=0.1):
 
     # LiDAR point cloud
     lidar_sc = ax.scatter([], [], s=2, c='cyan', alpha=0.45, zorder=2, label='LiDAR')
+
+    # Forklift body
+    _fk_t     = np.linspace(0, 2 * np.pi, 20)
+    fk_body,  = ax.plot([], [], color='#f39c12', lw=2.5, zorder=7, label='Forklift')
+    fk_dot,   = ax.plot([], [], 'o', color='#f39c12', ms=4, zorder=8)
+
+    # Draw forklift route as static dashed line
+    fk = env.forklift
+    ax.plot([fk.PATH_XMIN, fk.PATH_XMAX], [fk.PATH_Y, fk.PATH_Y],
+            '--', color='#f39c12', lw=0.8, alpha=0.4)
 
     # Time label
     time_txt = ax.text(0.02, 0.97, '', transform=ax.transAxes, va='top',
@@ -346,8 +404,16 @@ def create_animation(env, true_path, ekf_path, lidar_snapshots, lidar, dt=0.1):
         px, py  = lidar.to_cartesian(true_arr[step], snap_dict[nearest])
         lidar_sc.set_offsets(np.c_[px, py])
 
+        # Forklift
+        if forklift_history and step < len(forklift_history):
+            fkx, fky = forklift_history[step]
+            fk_body.set_data(fkx + fk.RADIUS * np.cos(_fk_t),
+                             fky + fk.RADIUS * np.sin(_fk_t))
+            fk_dot.set_data([fkx], [fky])
+
         time_txt.set_text(f't = {step * dt:.1f} s')
-        return true_line, ekf_line, robot_body, robot_head, ekf_dot, lidar_sc, time_txt
+        return (true_line, ekf_line, robot_body, robot_head,
+                ekf_dot, lidar_sc, fk_body, fk_dot, time_txt)
 
     anim = animation.FuncAnimation(
         fig, _update, frames=len(frames), interval=50, blit=True)

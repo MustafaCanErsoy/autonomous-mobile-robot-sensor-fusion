@@ -22,6 +22,7 @@ from navigation import PotentialFieldNav, Bug2Nav
 from visualization import (
     plot_environment, plot_paths, plot_lidar,
     plot_localization, plot_errors, create_animation,
+    plot_lidar_heatmap,
 )
 
 DT        = 0.1    # simulation timestep (s)
@@ -59,13 +60,15 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     else:
         nav = Bug2Nav(env.start.copy())
 
-    true_path       = [robot.state.copy()]
-    ekf_path        = [ekf.state.copy()]
-    dr_path         = [dr.state.copy()]
-    lidar_snapshots = []          # (step, true_dist, noisy_dist) every 15 steps
-    cov_history     = []          # (step, xy_pos, 2x2_cov) every 30 steps
-    waypoint_log    = []          # {name, step, time} when each WP is reached
-    wp_idx          = 0
+    true_path        = [robot.state.copy()]
+    ekf_path         = [ekf.state.copy()]
+    dr_path          = [dr.state.copy()]
+    lidar_snapshots  = []          # (step, true_dist, noisy_dist) every 15 steps
+    cov_history      = []          # (step, xy_pos, 2x2_cov) every 30 steps
+    waypoint_log     = []          # {name, step, time} when each WP is reached
+    forklift_history = []          # (fx, fy) each step
+    heatmap          = np.zeros((100, 100))   # LiDAR hit-point density
+    wp_idx           = 0
 
     for step in range(MAX_STEPS):
         goal = env.waypoints[wp_idx]
@@ -109,10 +112,25 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         # ---- Move robot (ground truth) ----
         robot.step(v_cmd, omega_cmd, DT, env)
 
+        # ---- Advance dynamic obstacles ----
+        env.step(DT)
+
         # ---- Store data ----
         true_path.append(robot.state.copy())
         ekf_path.append(ekf.state.copy())
         dr_path.append(dr.state.copy())
+        forklift_history.append((env.forklift.x, env.forklift.y))
+
+        # LiDAR heatmap — accumulate hit points (exclude max-range beams)
+        mask = noisy_dist < lidar.max_range * 0.95
+        if np.any(mask):
+            beam_ang = robot.state[2] + lidar.angles[mask]
+            px = robot.state[0] + noisy_dist[mask] * np.cos(beam_ang)
+            py = robot.state[1] + noisy_dist[mask] * np.sin(beam_ang)
+            H, _, _ = np.histogram2d(px, py, bins=100,
+                                     range=[[0, env.WIDTH], [0, env.HEIGHT]])
+            heatmap += H
+
         if step % 15 == 0:
             lidar_snapshots.append((step, true_dist.copy(), noisy_dist.copy()))
         if step % 30 == 0:
@@ -125,6 +143,8 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         lidar_snapshots=lidar_snapshots,
         cov_history=cov_history,
         waypoint_log=waypoint_log,
+        forklift_history=forklift_history,
+        heatmap=heatmap,
         env=env,
         lidar=lidar,
     )
@@ -187,9 +207,12 @@ def main():
               f" {b2_wp['time']:>10.1f}s {b2_dist:>12.1f}m")
 
     # Animasyon
+    # 6 — LiDAR heatmap
+    plot_lidar_heatmap(env, pf['heatmap'])
+
     print("\nAnimasyon oluşturuluyor (bu birkaç dakika sürebilir)...")
     create_animation(env, pf['true_path'], pf['ekf_path'],
-                     pf['lidar_snapshots'], lidar)
+                     pf['lidar_snapshots'], lidar, pf['forklift_history'])
 
     print("\n" + "=" * 55)
     print("  Tüm çıktılar 'outputs/' klasörüne kaydedildi.")

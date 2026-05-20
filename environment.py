@@ -1,6 +1,31 @@
 import numpy as np
 
 
+class Forklift:
+    """Dynamic obstacle — moves back and forth along a horizontal corridor."""
+
+    PATH_Y    = 16.5   # m
+    PATH_XMIN =  6.0   # m
+    PATH_XMAX = 26.0   # m
+    SPEED     =  0.4   # m/s
+    RADIUS    =  0.8   # m
+
+    def __init__(self):
+        self.x    = self.PATH_XMIN
+        self.y    = self.PATH_Y
+        self.r    = self.RADIUS
+        self._dir = 1   # +1 → right, -1 → left
+
+    def step(self, dt):
+        self.x += self._dir * self.SPEED * dt
+        if self.x >= self.PATH_XMAX:
+            self.x    = self.PATH_XMAX
+            self._dir = -1
+        elif self.x <= self.PATH_XMIN:
+            self.x    = self.PATH_XMIN
+            self._dir = 1
+
+
 class Environment:
     WIDTH = 50.0
     HEIGHT = 50.0
@@ -14,7 +39,12 @@ class Environment:
             np.array([45.0, 45.0]),
         ]
         self.waypoint_names = ["Kalite Kontrol", "Ambalaj", "Soğuk Depo"]
+        self.forklift = Forklift()
         self._build()
+
+    def step(self, dt):
+        """Advance dynamic obstacles by one timestep."""
+        self.forklift.step(dt)
 
     def _build(self):
         # (x, y, w, h, name, noise_zone) — rectangular obstacles
@@ -62,6 +92,8 @@ class Environment:
                     return True
             elif np.hypot(x - obs['x'], y - obs['y']) <= obs['r'] + margin:
                 return True
+        if np.hypot(x - self.forklift.x, y - self.forklift.y) <= self.forklift.r + margin:
+            return True
         return False
 
     def noise_multiplier(self, x, y):
@@ -100,6 +132,10 @@ class Environment:
             else:
                 t = self._slab_circle(dx, dy, ox, oy, obs)
             dist = np.minimum(dist, t)
+
+        # Dynamic obstacle: forklift
+        fk = {'x': self.forklift.x, 'y': self.forklift.y, 'r': self.forklift.r}
+        dist = np.minimum(dist, self._slab_circle(dx, dy, ox, oy, fk))
 
         return np.clip(dist, 0.0, max_range)
 

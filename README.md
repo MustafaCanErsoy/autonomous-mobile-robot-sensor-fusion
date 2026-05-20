@@ -61,7 +61,10 @@ Pre-generated results are available in the [`results/`](results/) folder.
 ### 5. Error Analysis
 ![Error Analysis](results/05_error_analysis.png)
 
-### Animated Simulation
+### 6. LiDAR Hit-Point Heatmap
+![LiDAR Heatmap](results/06_lidar_heatmap.png)
+
+### Animated Simulation (with dynamic forklift)
 ![Animation](results/animation.gif)
 
 ---
@@ -74,7 +77,9 @@ Pre-generated results are available in the [`results/`](results/) folder.
 - **EKF covariance ellipses** — visualised 95% confidence regions
 - **Dead reckoning** baseline for error comparison
 - **Two navigation algorithms**: Potential Field vs Bug2 (with stuck-escape mechanism)
-- **Animated simulation** with robot body (circle + heading arrow) and live LiDAR
+- **Dynamic forklift obstacle** — moves at 0.4 m/s along a horizontal corridor, included in collision detection and LiDAR scans
+- **LiDAR hit-point heatmap** — cumulative sensor density map over the full mission, revealing coverage gaps and high-traffic zones
+- **Animated simulation** with robot body (circle + heading arrow), live LiDAR beams, and moving forklift
 - **Quantitative error analysis**: RMSE and MAE
 
 ---
@@ -83,7 +88,7 @@ Pre-generated results are available in the [`results/`](results/) folder.
 
 ```
 ├── main.py               # Entry point — runs both simulations, saves all outputs
-├── environment.py        # Factory map: 15 obstacles, vectorised ray casting
+├── environment.py        # Factory map: 15 static obstacles + dynamic forklift, vectorised ray casting
 ├── robot.py              # Differential-drive kinematic model
 ├── sensors/
 │   ├── lidar.py          # 2D LiDAR with noise zones and obstacle clustering
@@ -141,20 +146,20 @@ Pure encoder integration — no fusion. Accumulates drift over time, used as low
 
 | Metric | EKF | Dead Reckoning | Improvement |
 |--------|-----|----------------|-------------|
-| RMSE (m) | **6.631** | 13.750 | **−51.8 %** |
-| MAE (m)  | **5.298** | 10.992 | **−51.8 %** |
+| RMSE (m) | **6.132** | 12.752 | **−51.9 %** |
+| MAE (m)  | **4.900** | 10.190 | **−51.9 %** |
 
-EKF halves the position error vs pure odometry over an 83-second, 60-metre traverse in a GPS-denied environment.
+EKF halves the position error vs pure odometry over a 101-second, 63-metre traverse in a GPS-denied environment.
 
 ### Navigation Comparison
 
 | Waypoint | PF Time | PF Distance | Bug2 Time | Bug2 Distance |
 |----------|---------|-------------|-----------|---------------|
 | Kalite Kontrol | 18.4 s | 13.2 m | 10.8 s | 12.7 m |
-| Ambalaj | 47.1 s | 34.6 m | 28.7 s | 34.0 m |
-| Soğuk Depo | 83.0 s | 59.8 m | **72.3 s** | 72.6 m |
+| Ambalaj | 65.7 s | 38.2 m | 28.7 s | 34.0 m |
+| Soğuk Depo | 101.7 s | 63.4 m | **72.3 s** | 72.6 m |
 
-Bug2 is faster overall (72.3 s vs 83.0 s) but travels a longer path to the final waypoint (72.6 m vs 59.8 m) due to boundary-following detours. Potential Field finds shorter, smoother paths at the cost of higher computation per step.
+Bug2 is faster overall (72.3 s vs 101.7 s) because it hugs obstacles directly rather than computing potential fields, but travels a longer total path (72.6 m vs 63.4 m) due to boundary-following detours. Potential Field finds shorter, smoother paths. The dynamic forklift obstacle increases path complexity — both algorithms reroute around it in real time.
 
 ---
 
