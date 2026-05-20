@@ -24,9 +24,15 @@ from visualization import (
     plot_localization, plot_errors, create_animation,
 )
 
-DT       = 0.1    # simulation timestep (s)
-MAX_STEPS = 4000  # ~400 s max simulation time
-GOAL_TOL  = 1.5   # waypoint reached threshold (m)
+DT        = 0.1    # simulation timestep (s)
+MAX_STEPS = 4000   # ~400 s max simulation time
+GOAL_TOL  = 1.5    # waypoint reached threshold (m)
+
+
+def _path_length(true_path, up_to_step):
+    """Total Euclidean distance travelled along true_path up to given step."""
+    arr = np.array(true_path[:up_to_step + 1])
+    return float(np.sum(np.linalg.norm(np.diff(arr[:, :2], axis=0), axis=1)))
 
 
 # ------------------------------------------------------------------ #
@@ -58,6 +64,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     dr_path         = [dr.state.copy()]
     lidar_snapshots = []          # (step, true_dist, noisy_dist) every 15 steps
     cov_history     = []          # (step, xy_pos, 2x2_cov) every 30 steps
+    waypoint_log    = []          # {name, step, time} when each WP is reached
     wp_idx          = 0
 
     for step in range(MAX_STEPS):
@@ -65,6 +72,11 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
 
         # Waypoint reached?
         if np.linalg.norm(robot.state[:2] - goal) < GOAL_TOL:
+            waypoint_log.append({
+                'name': env.waypoint_names[wp_idx],
+                'step': step,
+                'time': step * DT,
+            })
             if verbose:
                 print(f"  [{navigator_type}] WP{wp_idx + 1} '{env.waypoint_names[wp_idx]}'"
                       f" reached at t = {step * DT:.1f} s")
@@ -112,6 +124,7 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         dr_path=dr_path,
         lidar_snapshots=lidar_snapshots,
         cov_history=cov_history,
+        waypoint_log=waypoint_log,
         env=env,
         lidar=lidar,
     )
@@ -163,6 +176,15 @@ def main():
     print(f"  {'MAE (m)':<12} {mae_ekf:>10.4f} {mae_dr:>16.4f}")
     improvement = (1 - rmse_ekf / rmse_dr) * 100 if rmse_dr > 0 else 0
     print(f"\n  EKF, Dead Reckoning'e göre %{improvement:.1f} daha iyi RMSE")
+
+    # Waypoint karşılaştırma tablosu
+    print(f"\n  {'Waypoint':<22} {'PF Sure':>9} {'PF Mesafe':>11} {'Bug2 Sure':>11} {'Bug2 Mesafe':>13}")
+    print(f"  {'-'*68}")
+    for pf_wp, b2_wp in zip(pf['waypoint_log'], b2['waypoint_log']):
+        pf_dist  = _path_length(pf['true_path'], pf_wp['step'])
+        b2_dist  = _path_length(b2['true_path'], b2_wp['step'])
+        print(f"  {pf_wp['name']:<22} {pf_wp['time']:>8.1f}s {pf_dist:>10.1f}m"
+              f" {b2_wp['time']:>10.1f}s {b2_dist:>12.1f}m")
 
     # Animasyon
     print("\nAnimasyon oluşturuluyor (bu birkaç dakika sürebilir)...")
