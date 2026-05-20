@@ -98,14 +98,12 @@ class Bug2Nav:
     def __init__(self, start):
         self.start       = np.array(start, dtype=float)
         self._mode       = 'GO_TO_GOAL'
-        self._hit_point  = None
         self._min_dist   = np.inf
         self._wall_steps = 0
 
     def reset(self, new_start):
         self.start       = np.array(new_start, dtype=float)
         self._mode       = 'GO_TO_GOAL'
-        self._hit_point  = None
         self._min_dist   = np.inf
         self._wall_steps = 0
 
@@ -123,7 +121,6 @@ class Bug2Nav:
             self._wall_steps = 0
             if front_min < self.OBS_THRESHOLD:
                 self._mode      = 'FOLLOW_WALL'
-                self._hit_point = np.array([x, y])
                 self._min_dist  = d_goal
             return self._go_to_goal(theta, gx - x, gy - y, d_goal)
 

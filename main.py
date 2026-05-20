@@ -9,6 +9,7 @@ Kullanım:
 """
 
 import os
+import shutil
 import numpy as np
 
 from environment import Environment
@@ -153,7 +154,9 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
 # ------------------------------------------------------------------ #
 
 def main():
-    os.makedirs('outputs', exist_ok=True)
+    if os.path.exists('outputs'):
+        shutil.rmtree('outputs')
+    os.makedirs('outputs')
 
     print("=" * 55)
     print("  FrostBot — Pizza Fabrikası Simülasyonu")
@@ -200,6 +203,9 @@ def main():
     # Waypoint karşılaştırma tablosu
     print(f"\n  {'Waypoint':<22} {'PF Sure':>9} {'PF Mesafe':>11} {'Bug2 Sure':>11} {'Bug2 Mesafe':>13}")
     print(f"  {'-'*68}")
+    if len(pf['waypoint_log']) != len(b2['waypoint_log']):
+        print(f"  [UYARI] Waypoint sayıları eşleşmiyor: "
+              f"PF={len(pf['waypoint_log'])}, Bug2={len(b2['waypoint_log'])}")
     for pf_wp, b2_wp in zip(pf['waypoint_log'], b2['waypoint_log']):
         pf_dist  = _path_length(pf['true_path'], pf_wp['step'])
         b2_dist  = _path_length(b2['true_path'], b2_wp['step'])

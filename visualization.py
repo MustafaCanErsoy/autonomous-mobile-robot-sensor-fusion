@@ -135,7 +135,7 @@ def plot_lidar(robot_state, true_dist, noisy_dist, lidar, env):
 
     for ax, dists, title, pt_color in [
         (axes[0], true_dist,  'Ham LiDAR (Gürültüsüz)',         '#27ae60'),
-        (axes[1], noisy_dist, 'Filtrelenmiş LiDAR (Gürültülü)', '#e74c3c'),
+        (axes[1], noisy_dist, 'Gürültülü LiDAR (Ham Ölçüm)',    '#e74c3c'),
     ]:
         _draw_env(ax, env, show_names=False)
         px, py = lidar.to_cartesian(robot_state, dists)
