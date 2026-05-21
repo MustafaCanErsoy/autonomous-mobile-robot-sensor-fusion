@@ -71,9 +71,6 @@ Pre-generated results are available in the [`results/`](results/) folder.
 ### 6. LiDAR Hit-Point Heatmap
 ![LiDAR Heatmap](results/06_lidar_heatmap.png)
 
-### 6. LiDAR Hit-Point Heatmap
-![LiDAR Heatmap](results/06_lidar_heatmap.png)
-
 ### 7. EKF Sensor Innovations
 ![EKF Innovations](results/07_ekf_innovations.png)
 
@@ -208,9 +205,11 @@ Bug2 is faster overall (59.5 s vs 101.2 s) because it hugs obstacles directly ra
 
 [1] V. Ušinskis, M. Nowicki, A. Dzedzickis and V. Bučinskas, "Sensor-fusion based navigation for autonomous mobile robot," *Sensors*, vol. 25, no. 4, article 1248, 2025. doi: 10.3390/s25041248
 
-[2] Y. Ou, Y. Cai, Y. Sun and T. Qin, "Autonomous navigation by mobile robot with sensor fusion based on deep reinforcement learning," *Sensors*, vol. 24, no. 12, article 3895, 2024. doi: 10.3390/s24123895
+[2] V. J. Lumelsky and A. A. Stepanov, "Path-planning strategies for a point mobile automaton moving amidst unknown obstacles of arbitrary shape," *Algorithmica*, vol. 2, no. 1–4, pp. 403–430, 1987. doi: 10.1007/BF01840369
 
-[3] B. Zhang and C. Li, "The optimization and application research of the RRT-APF-based path planning algorithm," *Electronics*, vol. 13, no. 24, article 4963, 2024. doi: 10.3390/electronics13244963
+[3] S. Thrun, W. Burgard, and D. Fox, *Probabilistic Robotics*. Cambridge, MA: MIT Press, 2005. ISBN: 978-0-262-20162-9
+
+[4] B. Zhang and C. Li, "The optimization and application research of the RRT-APF-based path planning algorithm," *Electronics*, vol. 13, no. 24, article 4963, 2024. doi: 10.3390/electronics13244963
 
 ---
 

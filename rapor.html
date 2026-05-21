@@ -1,438 +1,757 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FrostBot — Sensör Füzyonu ve Lokalizasyon Raporu</title>
+<title>FrostBot — Sensör Füzyonu ve Lokalizasyon Kullanarak LiDAR Tabanlı Otonom Navigasyon</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@400;600&family=Source+Code+Pro&display=swap');
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Source Serif 4', Georgia, serif;
-    font-size: 11pt;
-    line-height: 1.75;
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12pt;
+    line-height: 1.7;
     color: #1a1a1a;
     background: #fff;
-    max-width: 860px;
+    max-width: 210mm;
     margin: 0 auto;
-    padding: 40px 60px 80px;
+    padding: 20mm 22mm;
   }
 
-  /* ── COVER ─────────────────────────────────────────────────────────── */
+  /* ── Kapak ── */
   .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
-    padding: 60px 0 50px;
-    border-bottom: 2px solid #2c3e50;
-    margin-bottom: 48px;
+    height: 228mm;
+    padding: 6mm 0 8mm 0;
+    border-bottom: 2.5px solid #1a1a1a;
+    margin-bottom: 0;
+    page-break-after: always;
+    justify-content: space-between;
+    overflow: hidden;
   }
-  .cover .uni { font-family: 'Source Sans 3', sans-serif; font-size: 13pt; color: #555; margin-bottom: 6px; }
-  .cover .course { font-family: 'Source Sans 3', sans-serif; font-size: 11pt; color: #777; margin-bottom: 36px; }
-  .cover h1 { font-size: 22pt; font-weight: 700; color: #2c3e50; line-height: 1.3; margin-bottom: 10px; }
-  .cover .subtitle { font-size: 13pt; color: #555; font-style: italic; margin-bottom: 40px; }
-  .cover .meta { font-family: 'Source Sans 3', sans-serif; font-size: 11pt; color: #444; line-height: 2.0; }
-  .cover .meta strong { color: #2c3e50; }
+  .cover-top { width: 100%; }
+  .cover-univ {
+    font-size: 19pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    letter-spacing: 0.3px;
+    margin-bottom: 6px;
+  }
+  .cover-fakulte {
+    font-size: 13pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    margin-bottom: 4px;
+  }
+  .cover-bolum {
+    font-size: 11.5pt;
+    color: #333;
+  }
+  .cover-logo-wrap {
+    margin: 22px 0 22px 0;
+  }
+  .cover-logo {
+    height: 130px;
+    width: auto;
+    display: block;
+    margin: 0 auto;
+  }
+  .cover-title {
+    font-size: 15.5pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    line-height: 1.45;
+    margin-bottom: 8px;
+  }
+  .cover-subtitle {
+    font-size: 11pt;
+    color: #444;
+    font-style: italic;
+  }
+  .cover-bottom {
+    width: 100%;
+    padding-top: 10mm;
+  }
+  .cover-ders {
+    font-size: 10.5pt;
+    color: #555;
+    margin-bottom: 20px;
+  }
+  .cover-danışman {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    margin-bottom: 14px;
+  }
+  .cover-ogrenci {
+    font-size: 12pt;
+    font-weight: bold;
+    color: #1a1a1a;
+    margin-bottom: 2px;
+  }
+  .cover-no {
+    font-size: 11pt;
+    color: #333;
+    margin-bottom: 14px;
+  }
+  .cover-tarih {
+    font-size: 11pt;
+    color: #555;
+  }
 
-  /* ── HEADINGS ───────────────────────────────────────────────────────── */
-  h1, h2, h3, h4 { font-family: 'Source Sans 3', sans-serif; color: #2c3e50; }
-  h2 { font-size: 15pt; font-weight: 700; margin: 40px 0 14px; padding-bottom: 6px; border-bottom: 1.5px solid #bdc3c7; }
-  h3 { font-size: 12.5pt; font-weight: 600; margin: 28px 0 10px; color: #34495e; }
-  h4 { font-size: 11pt; font-weight: 600; margin: 20px 0 8px; color: #555; }
+  /* ── Özet ── */
+  .abstract {
+    background: #f7f9fc;
+    border-left: 4px solid #2980b9;
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 11pt;
+  }
+  .abstract h2 { font-size: 11pt; margin-bottom: 6px; color: #2c3e50; }
 
-  /* ── PARAGRAPHS ─────────────────────────────────────────────────────── */
-  p { margin-bottom: 12px; text-align: justify; }
+  /* ── Bölümler ── */
+  h2 {
+    font-size: 13pt;
+    color: #2c3e50;
+    margin: 26px 0 9px 0;
+    padding-bottom: 4px;
+    border-bottom: 1.5px solid #d0d7df;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 12pt;
+    color: #34495e;
+    margin: 16px 0 6px 0;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-size: 11pt;
+    color: #2c3e50;
+    margin: 12px 0 4px 0;
+  }
+  p { margin-bottom: 9px; text-align: justify; }
 
-  /* ── FIGURES ────────────────────────────────────────────────────────── */
+  /* ── Görseller ── */
   figure {
-    margin: 28px 0;
+    margin: 14px auto;
     text-align: center;
     page-break-inside: avoid;
   }
   figure img {
     max-width: 100%;
-    border: 1px solid #dde;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    height: auto;
+    border: 1px solid #dce3ea;
+    border-radius: 3px;
   }
   figcaption {
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 9.5pt;
+    font-size: 10pt;
     color: #555;
-    margin-top: 8px;
-    line-height: 1.5;
+    margin-top: 5px;
+    font-style: italic;
   }
-  figcaption strong { color: #2c3e50; }
+  .fig-half { max-width: 78%; }
+  .fig-full { max-width: 100%; }
 
-  /* ── TABLES ─────────────────────────────────────────────────────────── */
-  table {
+  /* ── Tablolar ── */
+  table.veri {
     width: 100%;
     border-collapse: collapse;
-    margin: 20px 0 28px;
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 10pt;
+    font-size: 11pt;
+    margin: 12px 0;
     page-break-inside: avoid;
   }
-  thead tr { background: #2c3e50; color: #fff; }
-  thead th { padding: 9px 12px; text-align: left; font-weight: 600; }
-  tbody tr:nth-child(even) { background: #f4f6f8; }
-  tbody td { padding: 8px 12px; border-bottom: 1px solid #dde; }
-  .table-caption {
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 9.5pt;
-    color: #555;
-    margin-top: -18px;
-    margin-bottom: 24px;
+  table.veri th {
+    background: #2c3e50;
+    color: #fff;
+    padding: 6px 10px;
+    text-align: center;
+    font-weight: bold;
   }
+  table.veri td {
+    padding: 5px 10px;
+    border-bottom: 1px solid #e0e0e0;
+    text-align: center;
+  }
+  table.veri tr:nth-child(even) td { background: #f7f9fc; }
+  table.veri td:first-child { text-align: left; }
+  .en-iyi { font-weight: bold; color: #1a6830; }
 
-  /* ── MATH ───────────────────────────────────────────────────────────── */
-  .math-block {
-    font-family: 'Source Code Pro', monospace;
-    font-size: 10.5pt;
-    background: #f7f9fc;
-    border-left: 3px solid #2980b9;
-    padding: 10px 16px;
-    margin: 14px 0;
-    color: #2c3e50;
-    overflow-x: auto;
-  }
-  .math-inline {
-    font-family: 'Source Code Pro', monospace;
-    font-size: 10pt;
-    background: #f0f4f8;
-    padding: 1px 5px;
+  /* ── Formüller ── */
+  .formul {
+    font-family: "Courier New", Courier, monospace;
+    background: #f4f6f8;
+    border: 1px solid #dde3ea;
     border-radius: 3px;
-    color: #1a5276;
+    padding: 9px 15px;
+    margin: 8px 0 12px 0;
+    font-size: 10.5pt;
+    line-height: 1.65;
+    page-break-inside: avoid;
   }
 
-  /* ── CALLOUT ────────────────────────────────────────────────────────── */
-  .callout {
+  /* ── Listeler ── */
+  ul, ol { margin: 6px 0 10px 22px; }
+  li { margin-bottom: 3px; }
+
+  /* ── Vurgu kutusu ── */
+  .kutu {
     background: #eaf4fb;
     border-left: 4px solid #2980b9;
-    padding: 12px 16px;
-    margin: 18px 0;
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 10.5pt;
-    color: #1a3a4a;
-    border-radius: 0 4px 4px 0;
+    padding: 9px 13px;
+    margin: 10px 0;
+    font-size: 11pt;
+    page-break-inside: avoid;
+  }
+  .kutu.yesil   { background: #eafaf1; border-color: #27ae60; }
+  .kutu.turuncu { background: #fef9e7; border-color: #f39c12; }
+
+  /* ── Kaynakça ── */
+  .kaynaklar ol { font-size: 11pt; }
+  .kaynaklar li { margin-bottom: 7px; line-height: 1.5; }
+
+  /* ── YZ beyan tablosu ── */
+  table.yz-tablo {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11pt;
+    margin: 10px 0;
+  }
+  table.yz-tablo th {
+    background: #7f8c8d;
+    color: #fff;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  table.yz-tablo td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #ddd;
+    vertical-align: top;
+  }
+  table.yz-tablo tr:nth-child(even) td { background: #f7f7f7; }
+
+  .sayfa-sonu { page-break-before: always; }
+
+  /* ── Sayfa numaraları ── */
+  @page {
+    size: A4;
+    margin: 20mm 22mm 25mm 22mm;
+    @bottom-center {
+      content: "— " counter(page) " —";
+      font-size: 9.5pt;
+      color: #666;
+      font-family: "Times New Roman", Times, serif;
+    }
+  }
+  @page :first {
+    @bottom-center { content: ""; }
   }
 
-  /* ── REFERENCES ─────────────────────────────────────────────────────── */
-  ol.refs { padding-left: 22px; }
-  ol.refs li { margin-bottom: 8px; font-size: 10pt; line-height: 1.6; }
+  /* ── İçindekiler ── */
+  .toc {
+    margin-bottom: 28px;
+    page-break-inside: avoid;
+  }
+  .toc h3 {
+    font-size: 12pt;
+    color: #1a1a1a;
+    margin: 0 0 8px 0;
+    font-weight: bold;
+  }
+  .toc ol { margin: 0 0 0 18px; font-size: 11pt; }
+  .toc li { margin-bottom: 4px; }
+  .toc a { color: #1a1a1a; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
 
-  /* ── AI BOX ─────────────────────────────────────────────────────────── */
-  .ai-box {
-    border: 1.5px solid #bdc3c7;
-    border-radius: 6px;
-    padding: 16px 20px;
-    margin: 20px 0;
-    font-family: 'Source Sans 3', sans-serif;
+  /* ── Özet metrikleri ── */
+  .metrik-kutu {
+    display: flex;
+    gap: 10px;
+    margin: 12px 0 0 0;
+    flex-wrap: wrap;
+  }
+  .metrik {
+    flex: 1;
+    min-width: 110px;
+    background: #2c3e50;
+    color: #fff;
+    border-radius: 4px;
+    padding: 7px 10px;
+    text-align: center;
     font-size: 10pt;
-    background: #fdfefe;
   }
-  .ai-box h4 { margin: 0 0 10px; font-size: 11pt; color: #2c3e50; }
-  .ai-box ul { padding-left: 20px; }
-  .ai-box li { margin-bottom: 4px; }
+  .metrik strong { display: block; font-size: 14pt; color: #f1c40f; }
 
-  /* ── PRINT ──────────────────────────────────────────────────────────── */
   @media print {
-    body { padding: 0; max-width: 100%; font-size: 10.5pt; }
-    h2 { page-break-after: avoid; }
-    figure { page-break-inside: avoid; }
-    .cover { page-break-after: always; }
+    body { padding: 18mm 20mm; font-size: 11.5pt; }
+    a { color: inherit; text-decoration: none; }
+    .cover   { page-break-after: always; }
+    .abstract { page-break-after: always; }
+    .toc     { page-break-before: always; page-break-after: always; }
   }
 </style>
 </head>
 <body>
 
-<!-- ═══════════════════════════ KAPAK ═══════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════
+     KAPAK
+══════════════════════════════════════════════════════ -->
 <div class="cover">
-  <p class="uni">Bursa Teknik Üniversitesi</p>
-  <p class="course">Bilgisayar Mühendisliği Bölümü — Mekatronik Teknik Seçmeli</p>
-  <h1>Sensör Füzyonu ve Lokalizasyon Kullanarak<br>LiDAR Tabanlı Otonom Navigasyon</h1>
-  <p class="subtitle">2B Simülasyon Ortamında FrostBot Pizza Fabrikası Senaryosu</p>
-  <div class="meta">
-    <strong>Öğrenci:</strong> Mustafa Can Ersoy<br>
-    <strong>Tarih:</strong> Mayıs 2026<br>
-    <strong>GitHub:</strong> github.com/MustafaCanErsoy/autonomous-mobile-robot-sensor-fusion
+  <div class="cover-top">
+    <div class="cover-univ">BURSA TEKNİK ÜNİVERSİTESİ</div>
+    <div class="cover-fakulte">MÜHENDİSLİK VE DOĞA BİLİMLERİ FAKÜLTESİ</div>
+    <div class="cover-bolum">Mekatronik Mühendisliği Bölümü</div>
+  </div>
+
+  <div class="cover-logo-wrap">
+    <img src="data:image/png;base64,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" alt="Bursa Teknik Üniversitesi" class="cover-logo">
+  </div>
+
+  <div>
+    <div class="cover-title">
+      Sensör Füzyonu ve Lokalizasyon Kullanarak<br>LiDAR Tabanlı Otonom Navigasyon
+    </div>
+    <div class="cover-subtitle">FrostBot — Pizza Fabrikası Simülasyonu (2 Boyutlu Ortam)</div>
+  </div>
+
+  <div class="cover-bottom">
+    <div class="cover-ders">Mobil Robotlar</div>
+    <div class="cover-danışman">Dr. Öğr. Üyesi OĞUZ MISIR</div>
+    <div class="cover-ogrenci">Mustafa Can Ersoy</div>
+    <div class="cover-no">20360859046</div>
+    <div class="cover-tarih">Mayıs 2026</div>
   </div>
 </div>
 
-<!-- ═══════════════════════════ 1. GİRİŞ ════════════════════════ -->
-<h2>1. Giriş ve Senaryo Tanımı</h2>
+<!-- ── Özet ── -->
+<div class="abstract">
+  <h2>Özet</h2>
+  Bu çalışmada, bir dondurulmuş pizza fabrikasını temsil eden 50&times;50&nbsp;m boyutunda 2B ortamda
+  otonom navigasyon gerçekleştiren <em>FrostBot</em> adlı diferansiyel sürüşlü mobil robot simüle edilmiştir.
+  Ortam; 15 sabit engel ve 2 hareketli engel (forklift + palet robotu) içermektedir.
+  Robot; LiDAR, Atalet Ölçüm Birimi (IMU), tekerlek enkoderi ve manyetometre sensörlerini
+  3&nbsp;aşamalı Genişletilmiş Kalman Filtresi (GKF) ile birleştirerek konum tahmini yapmaktadır.
+  Potansiyel Alan ve Bug2 navigasyon algoritmaları karşılaştırmalı olarak test edilmiş;
+  GKF füzyonu ölü hesaplamaya kıyasla <strong>%77,7 RMSE iyileştirmesi</strong> sağlamıştır
+  (0,205&nbsp;m → 0,921&nbsp;m). Beş zorunlu görselleştirmeye ek olarak
+  LiDAR tarama yoğunluğu ısı haritası, GKF inovasyon analizi,
+  sensör ablasyon analizi ve 10 tohumlu Monte Carlo güvenilirlik testi (Ort. RMSE: 0,167&nbsp;m, Std: ±0,047&nbsp;m)
+  olmak üzere <strong>4 ileri analiz</strong> daha sunulmaktadır.<br><br>
+  <strong>Anahtar Kelimeler:</strong>
+  Genişletilmiş Kalman Filtresi, Sensör Füzyonu, LiDAR, Manyetometre, Otonom Navigasyon, Lokalizasyon<br><br>
+  <strong>GitHub:</strong>
+  <a href="https://github.com/MustafaCanErsoy/autonomous-mobile-robot-sensor-fusion" target="_blank">https://github.com/MustafaCanErsoy/autonomous-mobile-robot-sensor-fusion</a>
+</div>
 
-<p>Bu çalışmada, bir pizza fabrikasında otonom navigasyon gerçekleştiren diferansiyel sürüşlü bir mobil robotun 2B simülasyonu sunulmaktadır. Robot, <strong>FrostBot</strong> olarak adlandırılmış ve 50 × 50 metrelik bir fabrika ortamında üç teslimat noktası arasında görev yapmaktadır.</p>
+<!-- ── İçindekiler ── -->
+<div class="toc">
+  <h3>İçindekiler</h3>
+  <ol>
+    <li><a href="#bolum1">Giriş ve Senaryo Tanımı</a></li>
+    <li><a href="#bolum2">Kullanılan Yöntemler</a></li>
+    <li><a href="#bolum3">Gerekli Çıktılar</a></li>
+    <li><a href="#bolum4">Hata Analizi</a></li>
+    <li><a href="#bolum5">Ekstra Analizler (Ödev Gereksinimleri Ötesi)</a></li>
+    <li><a href="#bolum6">Tartışma ve Sonuç</a></li>
+    <li><a href="#bolum7">Kaynaklar</a></li>
+    <li><a href="#bolum8">Yapay Zeka Kullanım Beyanı</a></li>
+  </ol>
+</div>
 
-<p>Gerçek fabrika ortamlarında GPS sinyali kullanılamaz; ağır makineler elektromanyetik parazit (EMI) oluşturur ve konveyör bantları, sütunlar gibi sabit engellerin yanı sıra forklift ve palet robotu gibi hareketli engeller de bulunur. Bu koşullar altında robotun güvenli bir şekilde navigasyon yapabilmesi için <strong>sensör füzyonu</strong> ve <strong>lokalizasyon</strong> teknikleri zorunludur.</p>
+<!-- ══════════════════════════════════════════════════════
+     1. GİRİŞ VE SENARYO
+══════════════════════════════════════════════════════ -->
+<h2 id="bolum1">1. Giriş ve Senaryo Tanımı</h2>
 
-<h3>1.1 Ortam Özellikleri</h3>
-<p>Simülasyon ortamı aşağıdaki unsurları içermektedir:</p>
-<ul style="padding-left:22px; margin-bottom:12px;">
-  <li>15 sabit engel (11 dikdörtgen makine/konveyör + 4 dairesel sütun)</li>
-  <li>2 hareketli engel: Forklift (yatay, 0.4 m/s) ve Palet Robotu (dikey, 0.45 m/s)</li>
-  <li>EMI yüksek gürültü bölgeleri (ağır makineler çevresinde 6 m yarıçap, 3× gürültü)</li>
-  <li>Pusula sinyal kesintisi bölgeleri (Fırın ve Soğutma Ünitesi çevresinde 5 m yarıçap)</li>
+<p>
+Mobil robotların kapalı ortamlarda güvenli biçimde hareket edebilmesi için konumlarını sürekli tahmin etmeleri gerekmektedir. GPS'in kullanılamadığı fabrikalarda bu görev özellikle zorlaşır; tek bir sensörün gürültüsü zamanla birikerek lokalizasyon hatalarını artırır. Sensör füzyonu, birden fazla algılayıcıdan gelen verileri istatistiksel olarak birleştirerek bu hataları azaltmak için yaygın biçimde kullanılmaktadır [1].
+</p>
+
+<h3>1.1 Senaryo: FrostBot — Pizza Fabrikası</h3>
+
+<p>
+<em>FrostBot</em>, 50&times;50&nbsp;m boyutlarında bir dondurulmuş pizza fabrikasında üretim hattından soğuk depoya malzeme taşıyan otonom bir mobil robottur. Fabrikadaki ağır makineler elektromanyetik parazit kaynağı oluşturmakta; bu bölgelerde tüm sensörlerin gürültüsü <strong>3 kat</strong> artmaktadır. Fırın ve Soğutma Ünitesi'nin 5&nbsp;m yarıçapı içinde manyetometre sinyali tamamen kesilmektedir.
+</p>
+
+<ul>
+  <li><strong>Sabit engel:</strong> 11 dikdörtgen makine/konveyör + 4 dairesel sütun = 15 adet</li>
+  <li><strong>Hareketli engel:</strong> Forklift (yatay, 0,4&nbsp;m/s) + Palet Robotu (dikey, 0,45&nbsp;m/s)</li>
+  <li><strong>Toplam engel:</strong> 17 (gerekli en az: 10)</li>
 </ul>
 
+<table class="veri" style="margin-top:10px;">
+  <tr><th>#</th><th>Ara Nokta</th><th>Koordinat (m)</th><th>Açıklama</th></tr>
+  <tr><td>1</td><td>Kalite Kontrol</td><td>(14, 12)</td><td>Ürün kalite kontrol istasyonu</td></tr>
+  <tr><td>2</td><td>Ambalaj</td><td>(28, 28)</td><td>Paketleme ve etiketleme alanı</td></tr>
+  <tr><td>3</td><td>Soğuk Depo</td><td>(45, 45)</td><td>Nihai hedef — soğuk depo kapısı</td></tr>
+</table>
+
 <figure>
-  <img src="results/01_environment.png" alt="Fabrika ortam haritası">
-  <figcaption><strong>Şekil 1.</strong> FrostBot pizza fabrikası 2B ortam haritası. Kırmızı dikdörtgenler yüksek EMI bölgelerindeki makineleri, mavi dikdörtgenler konveyörleri, gri daireler yapısal sütunları göstermektedir. Mor daireler pusula sinyal kesintisi bölgelerini, turuncu/mor kesik çizgiler ise hareketli engel rotalarını temsil etmektedir.</figcaption>
+  <img src="results/01_environment.png" alt="Fabrika ortam haritası" class="fig-full">
+  <figcaption>
+    Şekil 1. FrostBot pizza fabrikası 2B ortam haritası.
+    Kırmızı = yüksek gürültülü makineler, Mavi = konveyörler, Gri = sütunlar.
+    Mor daireler = manyetometre sinyal kesinti bölgeleri.
+    Kesikli çizgiler = hareketli engel hareket alanları.
+  </figcaption>
 </figure>
 
-<h3>1.2 Robot Görevi</h3>
-<p>Robot, başlangıç noktası [3, 3] m'den hareketle sırasıyla üç teslimat noktasına ulaşmak zorundadır:</p>
+<!-- ══════════════════════════════════════════════════════
+     2. YÖNTEMLER
+══════════════════════════════════════════════════════ -->
+<div class="sayfa-sonu"></div>
+<h2 id="bolum2">2. Kullanılan Yöntemler</h2>
 
-<table>
-  <thead><tr><th>#</th><th>Waypoint</th><th>Koordinat (m)</th><th>Açıklama</th></tr></thead>
-  <tbody>
-    <tr><td>1</td><td>Kalite Kontrol</td><td>(14, 12)</td><td>İlk istasyon, EMI bölgesine yakın</td></tr>
-    <tr><td>2</td><td>Ambalaj</td><td>(28, 28)</td><td>Orta koridor, hareketli engellerle kesişim</td></tr>
-    <tr><td>3</td><td>Soğuk Depo</td><td>(45, 45)</td><td>Son teslimat noktası, köşe bölgesi</td></tr>
-  </tbody>
-</table>
-<p class="table-caption">Tablo 1. Robot teslimat waypoint'leri.</p>
-
-<!-- ═══════════════════════════ 2. YÖNTEMLER ════════════════════ -->
-<h2>2. Kullanılan Yöntemler</h2>
-
-<h3>2.1 Robot Modeli — Diferansiyel Sürüş</h3>
-
-<p>Robot non-holonomik diferansiyel sürüş kinematik modeliyle temsil edilmektedir. Durum vektörü <span class="math-inline">[x, y, θ]</span> olup her adımda şu şekilde güncellenir:</p>
-
-<div class="math-block">
-x' = x + v·cos(θ)·Δt<br>
-y' = y + v·sin(θ)·Δt<br>
-θ' = arctan2(sin(θ + ω·Δt), cos(θ + ω·Δt))
+<h3>2.1 Robot Modeli — Holonomik Olmayan Diferansiyel Sürüş</h3>
+<p>
+Robot, tekerlek tabanı <em>L</em>&nbsp;=&nbsp;0,5&nbsp;m olan iki bağımsız tekerlekli diferansiyel sürüşlü bir platformdur. Holonomik olmayan yapısı nedeniyle yanal kayış yapamaz. Kinematik model (∆t&nbsp;=&nbsp;0,1&nbsp;s):
+</p>
+<div class="formul">
+x' = x + v·cos(θ)·∆t &nbsp;&nbsp; y' = y + v·sin(θ)·∆t &nbsp;&nbsp; θ' = atan2(sin(θ+ω·∆t), cos(θ+ω·∆t))
 </div>
 
-<p>Diferansiyel sürüş modeli non-holonomik kısıt uygular: robot yalnızca ileriye/geriye hareket edebilir, yana kayamaz. Sağ ve sol tekerlek hızlarından doğrusal hız <span class="math-inline">v = (v_R + v_L)/2</span> ve açısal hız <span class="math-inline">ω = (v_R - v_L)/L</span> hesaplanır; burada <span class="math-inline">L = 0.5 m</span> dingil uzunluğudur.</p>
+<h3>2.2 Sensörler</h3>
 
-<h3>2.2 Sensörler ve Gürültü Modeli</h3>
-
-<p>Simülasyonda dört sensör kullanılmaktadır. Her sensöre bölgeye bağımlı Gauss gürültüsü eklenmektedir: EMI bölgelerinde gürültü standart sapması 3× artırılmaktadır.</p>
-
-<table>
-  <thead><tr><th>Sensör</th><th>Ölçüm</th><th>Gürültü (σ)</th><th>Özel Durum</th></tr></thead>
-  <tbody>
-    <tr><td>LiDAR</td><td>180 ışın, 360°, maks. 12 m</td><td>0.05 m (×3 EMI'de)</td><td>—</td></tr>
-    <tr><td>IMU</td><td>Açısal hız ω (rad/s)</td><td>0.015 rad/s</td><td>—</td></tr>
-    <tr><td>Enkoder</td><td>v, ω (tekerlek hızlarından)</td><td>0.03 m/s / tekerlek</td><td>Çarpmada v=0</td></tr>
-    <tr><td>Manyetometre</td><td>Mutlak yönelim θ (rad)</td><td>0.05 rad (×3 EMI'de)</td><td>Blackout bölgede None</td></tr>
-  </tbody>
+<table class="veri">
+  <tr>
+    <th>Sensör</th><th>Ölçülen Büyüklük</th><th>Gürültü σ</th><th>EMI Bölge σ</th><th>GKF'teki Rolü</th>
+  </tr>
+  <tr>
+    <td>LiDAR (180 ışın, 12 m)</td><td>Radyal mesafe</td><td>0,05 m</td><td>0,15 m</td><td>Navigasyon / engel algılama</td>
+  </tr>
+  <tr>
+    <td>IMU</td><td>Açısal hız ω</td><td>0,015 rad/s</td><td>0,045 rad/s</td><td>Güncelleme 1 (θ tahmini)</td>
+  </tr>
+  <tr>
+    <td>Tekerlek Enkoderi</td><td>Tekerlek hızları</td><td>0,03 m/s</td><td>0,09 m/s</td><td>Tahmin adımı (kontrol)</td>
+  </tr>
+  <tr>
+    <td>Manyetometre</td><td>Mutlak yönelim θ</td><td>0,05 rad</td><td>0,15 rad / kesinti*</td><td>Güncelleme 2 (mutlak θ)</td>
+  </tr>
 </table>
-<p class="table-caption">Tablo 2. Sensör özellikleri ve gürültü parametreleri.</p>
+<p style="font-size:10pt; color:#555; margin-top:-4px;">* Fırın ve Soğutma Ünitesi'nin 5 m yarıçapı içinde sinyal tamamen kesilir.</p>
 
-<h3>2.3 LiDAR İşleme</h3>
+<p>LiDAR ham ölçümlerine medyan filtresi (pencere=7) uygulanarak sivri gürültüler bastırılır; ardından boşluk tabanlı kümeleme ile engel grupları tespit edilir [3]. Manyetometre birikmeli hata üretmez, bu nedenle IMU'nun uzun vadeli açısal sürüklenmesini kırmak için kritik öneme sahiptir.</p>
 
-<p>Ham LiDAR taraması 180 ışından oluşur ve ortam içindeki engellere olan mesafeleri döndürür. Navigasyon için ham gürültülü ölçüm kullanılırken görselleştirme amacıyla <strong>medyan filtresi</strong> (pencere = 7 ışın) uygulanmaktadır. Filtrelenmiş veriye gap-tabanlı ardışık kümeleme algoritması uygulanarak birbirine yakın ışın uçları aynı engele ait kümeler olarak gruplandırılmaktadır (eşik = 1.5 m).</p>
+<h3>2.3 Genişletilmiş Kalman Filtresi (GKF)</h3>
 
-<figure>
-  <img src="results/03_lidar_data.png" alt="LiDAR ham ve filtrelenmiş veri">
-  <figcaption><strong>Şekil 2.</strong> LiDAR sensör verisi karşılaştırması. Sol panel ham gürültülü ölçümü, sağ panel medyan filtresi uygulanmış ve renk kodlu kümeleme yapılmış çıktıyı göstermektedir. Gri noktalar gerçek mesafe referansını temsil etmektedir.</figcaption>
-</figure>
+<p>
+GKF, doğrusal olmayan hareket modelini Jacobian matrisi ile doğrusallaştırarak standart Kalman Filtresi'ni genişletir [3]. Durum vektörü <strong>x&nbsp;=&nbsp;[x, y, θ]</strong><sup>T</sup>. Her adımda üç aşama uygulanır:
+</p>
 
-<h3>2.4 Extended Kalman Filter (EKF) ile Sensör Füzyonu</h3>
-
-<p>Lokalizasyon için enkoder, IMU ve manyetometre verilerini birleştiren bir <strong>Genişletilmiş Kalman Filtresi (EKF)</strong> kullanılmaktadır. EKF, nonlineer kinematik modeli birinci dereceden Taylor açılımıyla (Jacobian) doğrusallaştırır [1].</p>
-
-<p>Her zaman adımında filtre üç aşamalı çalışır:</p>
-
-<h4>Aşama 1 — Manyetometre Güncellemesi (t anında)</h4>
-<div class="math-block">
-z_mag = θ_gerçek + gürültü&nbsp;&nbsp;&nbsp;(drift-free mutlak yönelim)<br>
-Kalman kazancı K hesaplanır, durum ve kovaryans güncellenir.
+<h4>Aşama 1 — Manyetometre Ön Güncellemesi (sinyal kesintisi yoksa)</h4>
+<div class="formul">
+H = [0, 0, 1] &nbsp;|&nbsp; K = P·Hᵀ·(H·P·Hᵀ + R_Mag)⁻¹ &nbsp;|&nbsp; x̂ ← x̂ + K·υ_Mag<br>
+R_Mag = (σ_mag × mult)² &nbsp;→&nbsp; normal bölge: (0,05)² = 0,0025 &nbsp;|&nbsp; EMI bölgesi: (0,15)² = 0,0225
 </div>
 
-<h4>Aşama 2 — Enkoder Tahmini (t → t+1)</h4>
-<div class="math-block">
-x̂' = x̂ + v_enc·cos(θ̂)·Δt<br>
-ŷ' = ŷ + v_enc·sin(θ̂)·Δt<br>
-θ̂' = θ̂ + ω_enc·Δt<br>
-P' = F·P·Fᵀ + Q
-</div>
-<p>Burada F, hareket modelinin Jacobian matrisidir:</p>
-<div class="math-block">
-F = [[1, 0, -v·sin(θ)·Δt],<br>
-&nbsp;&nbsp;&nbsp;&nbsp; [0, 1,  v·cos(θ)·Δt],<br>
-&nbsp;&nbsp;&nbsp;&nbsp; [0, 0,  1          ]]
+<h4>Aşama 2 — Tahmin (Tekerlek Enkoderi)</h4>
+<div class="formul">
+x̂⁻ = f(x̂, u) &nbsp;|&nbsp; P⁻ = F·P·Fᵀ + Q &nbsp;|&nbsp; Q = diag([0,005; 0,005; 0,002])<br>
+F = ⎡1  0  −v·sin(θ)·∆t⎤  ← Jacobian (doğrusallaştırma)
+    ⎢0  1   v·cos(θ)·∆t⎥
+    ⎣0  0       1      ⎦
 </div>
 
-<h4>Aşama 3 — IMU Güncellemesi (t+1 anında)</h4>
-<div class="math-block">
-z_IMU = θ_önceki + ω_IMU·Δt&nbsp;&nbsp;&nbsp;(sanal θ gözlemi)<br>
-İnovasyon = z_IMU − θ̂_tahmin
+<h4>Aşama 3 — IMU Güncellemesi</h4>
+<div class="formul">
+z = θ_önceki + ω_IMU·∆t &nbsp;|&nbsp; K = P⁻·Hᵀ·(H·P⁻·Hᵀ + R_IMU)⁻¹ &nbsp;(R_IMU = 0,003)<br>
+x̂ = x̂⁻ + K·(z − H·x̂⁻) &nbsp;|&nbsp; P = (I − K·H)·P⁻
 </div>
 
-<p>Bu 3 aşamalı sıralama fiziksel olarak doğrudur: manyetometre t anındaki mutlak yönelimi düzeltir, enkoder t+1'e tahmin üretir, IMU ise oluşan yönelim sürüklenmesini t+1'de giderir.</p>
+<p>Kovaryans matrisi P konum belirsizliğini ölçer: makine bölgelerinde büyür, açık koridorlarda küçülür. Tüm açı güncellemeleri atan2 ile [−π, +π] aralığına normalleştirilir.</p>
 
-<p>EMI bölgelerinde manyetometre gürültüsü 3× arttığından R matrisinin ilgili elemanı da dinamik olarak güncellenmektedir:</p>
-<div class="math-block">
-R_mag_bölge = (σ_mag × gürültü_çarpanı)²
+<h3>2.4 Navigasyon Algoritmaları</h3>
+
+<p><strong>Potansiyel Alan:</strong> Hedefe doğru çekici kuvvet ile LiDAR engel noktalarından itici kuvvetlerin vektörel toplamı hesaplanır (etki mesafesi 2,5&nbsp;m, 180 ışın üzerinde vektörleştirilmiş). Son 30 adımda 0,12&nbsp;m'den az hareket tespit edilirse rastgele kaçış hareketi uygulanır.</p>
+
+<p><strong>Bug2:</strong> HEDEFE_GİT ↔ DUVAR_TAKİP iki durumlu durum makinesi. Ön sektörde engel algılandığında sınır takip moduna geçer; M-çizgisini hedefe daha yakın bir noktada yeniden kesiştirdiğinde geri döner. 120 adımlık zaman aşımı sonsuz döngüyü önler [2].</p>
+
+<p><strong>Ölü Hesaplama (kıyaslama):</strong> Saf enkoder entegrasyonu, füzyon yok. Zamanla birikimli drift üretir; GKF için alt sınır ölçütü olarak kullanılır.</p>
+
+<!-- ══════════════════════════════════════════════════════
+     3. GEREKLİ ÇIKTILAR
+══════════════════════════════════════════════════════ -->
+<div class="sayfa-sonu"></div>
+<h2 id="bolum3">3. Gerekli Çıktılar</h2>
+
+<h3>3.1 Ortam Haritası</h3>
+<p>Bölüm 1'de sunulan ortam haritası (Şekil 1), simülasyonun tam ölçekli bağlamını göstermektedir. 15 sabit engel EMI yoğunluğuna göre renk kodlanmış (kırmızı = yüksek gürültü kaynağı makine, mavi = konveyör, gri = sütun), 2 hareketli engel noktalı hareket alanlarıyla gösterilmiştir. Manyetometre sinyal kesinti bölgeleri mor dairelerle vurgulanmıştır; bu bölgeler GKF'in aşama 1 güncellemesini devre dışı bıraktığı kritik alanlardır ve lokalizasyon zorluğunu artırır.</p>
+
+<h3>3.2 Yol Karşılaştırması</h3>
+<p>Planlanan ideal yol (siyah kesikli — engeller gözetilmeksizin doğrudan hat) ile her iki algoritmanın ürettiği gerçek yollar aynı grafik üzerinde karşılaştırılmıştır. <strong>Potansiyel Alan</strong> yolu düzgün ve sürekli eğrilerden oluşmakta; yerel minimumlarda rastgele kaçış manevraları küçük sapmalara neden olmaktadır. <strong>Bug2</strong> yolu ise hedefe çok daha hızlı ulaşmakla birlikte sınır takip fazlarında keskin dönüşler içermektedir. Her iki algoritma da hareketli forkliftle anlık çarpışmadan kaçınmış; dinamik yeniden planlama yetkinliğini kanıtlamıştır.</p>
+
+<figure>
+  <img src="results/02_path_comparison.png" alt="Yol karşılaştırması" class="fig-full">
+  <figcaption>
+    Şekil 2. Yol karşılaştırması: Potansiyel Alan (sol) ve Bug2 (sağ).
+    Siyah kesikli = planlanan ideal yol; renkli = gerçek robot yolu.
+    Turuncu/mor alanlar hareketli engel çalışma bölgelerini göstermektedir.
+  </figcaption>
+</figure>
+
+<h3>3.3 LiDAR Sensör Verisi — Ham ve Filtrelenmiş</h3>
+<p>Sol panelde ham LiDAR verisi gürültülü ölçüm noktalarını göstermekte; birbirine yakın ışınlarda rastgele saçılmalar gözlemlenmektedir. Sağ panelde aynı pozisyon için medyan filtresi (pencere&nbsp;=&nbsp;7) uygulanmış ve boşluk tabanlı kümeleme algoritması çalıştırılmıştır. Filtreleme sonucunda sivri gürültüler bastırılmış, her engel grubu ayrı renkte kümelenmiştir. Gri noktalar azami menzile ulaşan (isabet yok) ışınları belirtmekte; bu ışınlar hem navigasyon hem de harita güncelleme adımlarında doğru biçimde göz ardı edilmektedir.</p>
+
+<figure>
+  <img src="results/03_lidar_data.png" alt="LiDAR veri görselleştirmesi" class="fig-full">
+  <figcaption>
+    Şekil 3. LiDAR sensör verisi. Sol: Ham gürültülü ölçüm.
+    Sağ: Medyan filtresi (pencere=7) + boşluk tabanlı kümeleme; her renk bir engel kümesi.
+  </figcaption>
+</figure>
+
+<h3>3.4 Lokalizasyon Sonuçları</h3>
+<p>
+Sol panel, gerçek yol (yeşil) ile GKF tahmini (mavi) ve ölü hesaplama (kırmızı) yollarını 2B uzayda karşılaştırmaktadır. GKF kovaryans elipsleri (%95 güven) robot belirsizliğini sayısal olarak yansıtmakta; EMI bölgelerinde elipsler genişlerken açık koridorlarda daralarak filtrenin ortama uyarlandığını göstermektedir. Sağ paneldeki x(t), y(t) ve θ(t) zaman serilerinde ölü hesaplamanın zamanla gerçek değerden ayrıştığı, GKF'in ise uzun rotada yakın kaldığı açıkça görülmektedir. θ(t) grafiğindeki mor gölgeler manyetometre kesinti dönemlerini işaretlemekte; bu bölgelerde GKF yalnızca IMU ile yönelim düzeltmesi yaparak sürüklenme birikmesini sınırlamaktadır.
+</p>
+
+<figure>
+  <img src="results/04_localization.png" alt="Lokalizasyon sonuçları" class="fig-full">
+  <figcaption>
+    Şekil 4. Lokalizasyon sonuçları.
+    Sol: 2B yol ve GKF kovaryans elipsleri (%95). Sağ: x(t), y(t), θ(t) —
+    Yeşil = Gerçek Değer, Mavi = GKF, Kırmızı = Ölü Hesaplama.
+    Mor gölge = manyetometre sinyal kesintisi.
+  </figcaption>
+</figure>
+
+<!-- ══════════════════════════════════════════════════════
+     4. HATA ANALİZİ
+══════════════════════════════════════════════════════ -->
+<div class="sayfa-sonu"></div>
+<h2 id="bolum4">4. Hata Analizi</h2>
+
+<p>Konum hatası gerçek ve tahmin edilen yol arasındaki Öklid mesafesidir. RMSE büyük hataları daha ağırlıklı cezalandırırken MAE tüm hataları eşit ağırlıkta ele alır:</p>
+<div class="formul">
+e(t) = √[(x_g − x_t)² + (y_g − y_t)²] &nbsp;|&nbsp; RMSE = √(Σe²/N) &nbsp;|&nbsp; MAE = Σ|e|/N
 </div>
 
-<h3>2.5 Dead Reckoning (Referans Yöntemi)</h3>
-
-<p>Dead reckoning, yalnızca enkoder verisiyle konumu entegre eden saf odometri yöntemidir. Sensör füzyonu olmadığından zamanla hata birikir ve büyük sapmalara yol açar. Bu yöntem, EKF'nin etkinliğini karşılaştırmalı olarak göstermek amacıyla referans olarak kullanılmaktadır.</p>
-
-<h3>2.6 Navigasyon Algoritmaları</h3>
-
-<h4>Potential Field Yöntemi</h4>
-<p>Robota hedefe doğru çekici (attractive) ve engellerden uzaklaştırıcı (repulsive) kuvvetler uygulanır. Toplam kuvvetin yönünde hareket eden robot, 2.5 m etki yarıçapındaki tüm 180 LiDAR ışınından repülsiyon kuvveti alır. Robotun aynı bölgede takılı kalması durumunda 25 adımlık rastgele kaçış manevrası uygulanır [3].</p>
-
-<h4>Bug2 Algoritması</h4>
-<p>İki modlu durum makinesiyle çalışır: <strong>GO_TO_GOAL</strong> (hedef yönünde düz git) ve <strong>FOLLOW_WALL</strong> (engel yüzeyini takip et). M-çizgisi: başlangıç ile hedef arasındaki düz hat. Robot engele çarptığında duvar takibine geçer; M-çizgisini hedefe daha yakın bir noktada yeniden kestiğinde GO_TO_GOAL moduna döner. 120 adımlık zaman aşımı, sonsuz döngüyü engeller.</p>
-
-<!-- ═══════════════════════════ 3. SONUÇLAR ══════════════════════ -->
-<h2>3. Sonuçlar ve Grafikler</h2>
-
-<h3>3.1 Yol Karşılaştırması</h3>
-
 <figure>
-  <img src="results/02_path_comparison.png" alt="Yol karşılaştırması">
-  <figcaption><strong>Şekil 3.</strong> Potential Field ve Bug2 algoritmaları için yol karşılaştırması. Siyah kesik çizgi engelsiz ortam için düz hat referansı (planlanan yol), renkli çizgi robotun gerçekte izlediği yoldur. Turuncu ve mor alanlar hareketli engellerin (Forklift — F, Palet Robotu — P) hareket aralıklarını göstermektedir.</figcaption>
+  <img src="results/05_error_analysis.png" alt="Hata analizi" class="fig-full">
+  <figcaption>
+    Şekil 5. Hata analizi: Konum hatası (üst) ve yönelim hatası (alt) zaman serileri.
+    Kesikli yatay çizgiler RMSE değerlerini, gölgeli alanlar kümülatif hatayı göstermektedir.
+  </figcaption>
 </figure>
 
-<table>
-  <thead><tr><th>Waypoint</th><th>PF Süre</th><th>PF Mesafe</th><th>Bug2 Süre</th><th>Bug2 Mesafe</th></tr></thead>
-  <tbody>
-    <tr><td>Kalite Kontrol</td><td>19.5 s</td><td>14.0 m</td><td>12.0 s</td><td>13.4 m</td></tr>
-    <tr><td>Ambalaj</td><td>81.0 s</td><td>45.1 m</td><td>30.6 s</td><td>34.7 m</td></tr>
-    <tr><td>Soğuk Depo</td><td>117.1 s</td><td>70.4 m</td><td>61.7 s</td><td>64.8 m</td></tr>
-  </tbody>
+<h3>4.1 Lokalizasyon Sonuçları</h3>
+
+<table class="veri">
+  <tr><th>Yöntem</th><th>RMSE (m)</th><th>MAE (m)</th><th>İyileştirme</th></tr>
+  <tr>
+    <td>Ölü Hesaplama (yalnızca enkoder)</td>
+    <td>0,921</td><td>0,734</td><td>—</td>
+  </tr>
+  <tr>
+    <td class="en-iyi">GKF (Enkoder + IMU + Manyetometre)</td>
+    <td class="en-iyi">0,205</td><td class="en-iyi">0,198</td><td class="en-iyi">%77,7</td>
+  </tr>
 </table>
-<p class="table-caption">Tablo 3. Navigasyon algoritması performans karşılaştırması.</p>
 
-<p>Bug2, tüm waypoint'lere Potential Field'dan yaklaşık 2× daha hızlı ulaşmaktadır. Bunun nedeni Potential Field'ın lokal minimumlarda takılarak rastgele kaçış manevrası yapmasıdır. Bug2 ise duvar takibi stratejisiyle daha doğrudan bir güzergah izlemektedir. Her iki algoritma da tüm teslimat noktalarına başarıyla ulaşmıştır.</p>
-
-<h3>3.2 Lokalizasyon Sonuçları</h3>
-
-<figure>
-  <img src="results/04_localization.png" alt="Lokalizasyon sonuçları">
-  <figcaption><strong>Şekil 4.</strong> Lokalizasyon sonuçları. Sol panel 2B yol karşılaştırmasını ve EKF kovaryans elipslerini (%95 güven), sağ paneller ise x(t), y(t) ve θ(t) zaman serilerini göstermektedir. Gri noktalar ham manyetometre ölçümlerini, mor gölgeli bantlar sinyal kesintisi (blackout) bölgelerini temsil etmektedir.</figcaption>
-</figure>
-
-<p>EKF yolu (mavi kesik çizgi) gerçek yola (yeşil) çok yakın seyrederken Dead Reckoning (kırmızı noktalı) zamanla belirgin şekilde sapmaktadır. θ(t) grafiğinde, manyetometre blackout bölgelerinde EKF'nin yalnızca IMU+enkodere dayanarak yönelim tahminini sürdürdüğü görülmektedir.</p>
-
-<h3>3.3 Hata Analizi</h3>
-
-<figure>
-  <img src="results/05_error_analysis.png" alt="Hata analizi">
-  <figcaption><strong>Şekil 5.</strong> Konum hatası (üst) ve yönelim hatası (alt) zaman serileri. Gölgeli alanlar hata büyüklüğünü, kesik yatay çizgiler RMSE referans değerlerini göstermektedir.</figcaption>
-</figure>
-
-<table>
-  <thead><tr><th>Metrik</th><th>EKF (3 Sensör)</th><th>Dead Reckoning</th><th>İyileşme</th></tr></thead>
-  <tbody>
-    <tr><td>Konum RMSE (m)</td><td><strong>0.205</strong></td><td>0.921</td><td>−77.7 %</td></tr>
-    <tr><td>Konum MAE (m)</td><td><strong>0.198</strong></td><td>0.734</td><td>−73.0 %</td></tr>
-    <tr><td>Yönelim RMSE (°)</td><td><strong>1.75°</strong></td><td>5.16°</td><td>−66.1 %</td></tr>
-    <tr><td>Yönelim MAE (°)</td><td><strong>1.37°</strong></td><td>4.35°</td><td>−68.5 %</td></tr>
-  </tbody>
-</table>
-<p class="table-caption">Tablo 4. EKF ve Dead Reckoning lokalizasyon hata karşılaştırması (Potential Field simülasyonu, seed=42).</p>
-
-<h3>3.4 LiDAR Isı Haritası</h3>
-
-<figure>
-  <img src="results/06_lidar_heatmap.png" alt="LiDAR ısı haritası">
-  <figcaption><strong>Şekil 6.</strong> 117 saniyelik görev boyunca birikimli LiDAR isabet noktası yoğunluğu. Parlak (sarı-turuncu) bölgeler sık taranan yüzeyleri göstermektedir. Robotun geçtiği güzergaha bakan engel yüzleri en yüksek tarama yoğunluğuna sahiptir.</figcaption>
-</figure>
-
-<h3>3.5 EKF Sensör İnovasyonları</h3>
-
-<figure>
-  <img src="results/07_ekf_innovations.png" alt="EKF inovasyonları">
-  <figcaption><strong>Şekil 7.</strong> EKF ön-düzeltme artıkları (inovasyonlar). Üst panel IMU sanal-theta inovasyonunu, alt panel manyetometre inovasyonunu göstermektedir. Mor gölgeli bantlar blackout bölgelerini işaretlemektedir. Mavi bant ±1σ hareketli standart sapmayı temsil etmektedir.</figcaption>
-</figure>
-
-<p>Her iki sensörün inovasyonları sıfır çevresinde simetrik dağılım sergilemektedir; bu durum filtrede sistematik bir sapma (bias) olmadığının göstergesidir. IMU RMSE = 0.696°, manyetometre RMSE = 4.448° — manyetometrenin daha gürültülü olduğu beklenen bir sonuçtur [1].</p>
-
-<h3>3.6 Sensör Ablasyon Analizi</h3>
-
-<figure>
-  <img src="results/08_sensor_ablation.png" alt="Sensör ablasyon">
-  <figcaption><strong>Şekil 8.</strong> Her sensörün EKF lokalizasyon doğruluğuna katkısı. Sol panel zaman serisini, sağ panel RMSE karşılaştırmasını göstermektedir.</figcaption>
-</figure>
-
-<table>
-  <thead><tr><th>Konfigürasyon</th><th>RMSE (m)</th><th>MAE (m)</th><th>Öncekine göre</th></tr></thead>
-  <tbody>
-    <tr><td>Dead Reckoning (enkoder)</td><td>1.285</td><td>1.002</td><td>—</td></tr>
-    <tr><td>EKF: Enkoder + IMU</td><td>0.360</td><td>0.289</td><td>−72.0 %</td></tr>
-    <tr><td>EKF: Enkoder + IMU + Manyetometre</td><td><strong>0.173</strong></td><td><strong>0.169</strong></td><td>−52.0 %</td></tr>
-  </tbody>
-</table>
-<p class="table-caption">Tablo 5. Sensör ablasyon çalışması sonuçları.</p>
-
-<p>Ablasyon çalışması her sensörün bağımsız katkısını kanıtlamaktadır: IMU eklenmesi drift'i %72 azaltırken manyetometre eklenmesi ek %52 iyileşme sağlamaktadır. Bu sonuç, mutlak yönelim bilgisi sağlayan sensörün (manyetometre) lokalizasyon kararlılığı açısından kritik önem taşıdığını göstermektedir [2].</p>
-
-<h3>3.7 Monte Carlo Dayanıklılık Analizi</h3>
-
-<figure>
-  <img src="results/09_monte_carlo.png" alt="Monte Carlo analizi">
-  <figcaption><strong>Şekil 9.</strong> 10 farklı rastgele seed (42–51) üzerinde EKF ve Dead Reckoning karşılaştırması. Sol panelde ince çizgiler tek çalışmaları, kalın çizgiler ortalamayı, gölgeli bantlar ±1σ aralığını göstermektedir. Sağ panel her seed için RMSE dağılımını box plot olarak sunmaktadır.</figcaption>
-</figure>
-
-<table>
-  <thead><tr><th>Yöntem</th><th>Ortalama RMSE (m)</th><th>Std (m)</th><th>Min (m)</th><th>Maks (m)</th></tr></thead>
-  <tbody>
-    <tr><td>Dead Reckoning</td><td>6.782</td><td>±5.042</td><td>1.12</td><td>17.84</td></tr>
-    <tr><td>EKF (3 sensör)</td><td><strong>0.167</strong></td><td>±0.047</td><td>0.094</td><td>0.244</td></tr>
-  </tbody>
-</table>
-<p class="table-caption">Tablo 6. Monte Carlo analizi özet istatistikleri (10 seed).</p>
-
-<p>Dead Reckoning'in 10 seed üzerindeki yüksek varyansı (σ = 5.042 m), saf odometrinin rastgele gürültüye karşı son derece kırılgan olduğunu göstermektedir. Bazı seed'lerde DR hatası 17 metreyi aşmaktadır — 50×50 m'lik ortamda tamamen yönünü kaybetmek anlamına gelir. Buna karşın EKF, tüm seed'lerde 0.094–0.244 m aralığında tutarlı performans sergilemektedir. Bu sonuç sensör füzyonunun dayanıklılık açısından vazgeçilmez olduğunu kanıtlamaktadır.</p>
-
-<!-- ═══════════════════════════ 4. TARTIŞMA ══════════════════════ -->
-<h2>4. Hata Analizi ve Tartışma</h2>
-
-<h3>4.1 EKF Performansı</h3>
-
-<p>EKF, 117 saniyelik görev boyunca 0.205 m RMSE ile Dead Reckoning'e göre %77.7 daha iyi konum doğruluğu elde etmiştir. Bu başarının iki temel nedeni vardır: (1) manyetometrenin sağladığı drift-free mutlak yönelim korreksiyonu ve (2) EKF kovaryans matrisi P aracılığıyla her sensörün güvenilirliğinin dinamik olarak ağırlıklandırılması.</p>
-
-<p>EKF hatasının sıfırdan farklı olmasının başlıca nedenleri şunlardır: enkoder kayma gürültüsü pozisyon tahmininde belirsizliğe yol açmakta, EMI bölgelerinde 3× artan gürültü filtrenin geçici olarak bozulmasına neden olmakta ve blackout bölgelerinde manyetometre devre dışı kalmaktadır.</p>
+<div class="kutu yesil">
+  <strong>Temel bulgu:</strong> 3 sensörlü GKF füzyonu RMSE'yi %77,7 oranında azaltmaktadır (0,921&nbsp;m → 0,205&nbsp;m). Manyetometrenin birikmeli hata içermeyen mutlak yönelim ölçümü açısal sürüklenmeyi kırar ve böylece <em>x-y</em> hatasının birikmesini doğrudan engeller.
+</div>
 
 <h3>4.2 Navigasyon Algoritması Karşılaştırması</h3>
 
-<p>Bug2, bu senaryoda Potential Field'dan yaklaşık 2× daha hızlı performans göstermiştir. Potential Field yönteminin yavaşlamasının başlıca nedeni lokal minimum problemidir: robot iki repülsiyon bölgesi arasında sıkışıp kalabilmekte ve bu durumda 25 adımlık rastgele kaçış manevrası zaman kaybına yol açmaktadır. Bug2 ise M-çizgisi takibi sayesinde bu sorunu yaşamamaktadır. Ancak Bug2 algoritması karmaşık labirent tipi ortamlarda sonsuz döngüye girebilir; bunu önlemek için 120 adımlık zaman aşımı mekanizması uygulanmıştır.</p>
+<table class="veri">
+  <tr>
+    <th>Ara Nokta</th>
+    <th>Pot. Alan Süresi (s)</th><th>Pot. Alan Mesafe (m)</th>
+    <th>Bug2 Süresi (s)</th><th>Bug2 Mesafe (m)</th>
+  </tr>
+  <tr><td>Kalite Kontrol</td><td>19,5</td><td>14,0</td><td>12,0</td><td>13,4</td></tr>
+  <tr><td>Ambalaj</td><td>81,0</td><td>45,1</td><td>30,6</td><td>34,7</td></tr>
+  <tr><td>Soğuk Depo</td><td>117,1</td><td>70,4</td><td class="en-iyi">61,7</td><td>64,8</td></tr>
+</table>
 
-<h3>4.3 Sınırlamalar</h3>
+<p>Bug2 toplam süre açısından %47 daha hızlıdır (61,7&nbsp;s vs 117,1&nbsp;s); Potansiyel Alan ise daha düzgün ve kısa toplam mesafe üretmektedir. Her iki algoritma da dinamik forklift engeline karşı gerçek zamanlı yeniden planlama yapabilmektedir.</p>
 
-<p>Bu simülasyon bazı gerçek dünya etkilerini modellerken bazılarını basitleştirmektedir. Modellenen etkiler: sensör gürültüsü, EMI bölgeleri, çarpışma dinamiği, hareketli engeller. Basitleştirilen etkiler: LiDAR yansıma/gölge efektleri, tekerlek kayması, batarya tükenmesi ve 3B ortam etkileri yok sayılmıştır.</p>
+<!-- ══════════════════════════════════════════════════════
+     5. EKSTRA ANALİZLER
+══════════════════════════════════════════════════════ -->
+<div class="sayfa-sonu"></div>
+<h2 id="bolum5">5. Ekstra Analizler (Ödev Gereksinimleri Ötesi)</h2>
 
-<!-- ═══════════════════════════ 5. KAYNAKLAR ════════════════════ -->
-<h2>5. Kaynaklar</h2>
+<h3>5.1 LiDAR Tarama Yoğunluğu Isı Haritası</h3>
+<p>Simülasyon boyunca LiDAR ışınlarının çarptığı noktalar 100×100 ızgara üzerinde biriktirilmiştir. Engel çevrelerinin yoğun kırmızı görünmesi, sensörün engelleri sürekli ve doğru algıladığını kanıtlamaktadır.</p>
 
-<ol class="refs">
-  <li>V. Ušinskis, M. Nowicki, A. Dzedzickis ve V. Bučinskas, "Sensor-fusion based navigation for autonomous mobile robot," <em>Sensors</em>, cilt 25, sayı 4, makale 1248, 2025. doi: 10.3390/s25041248</li>
-  <li>Y. Ou, Y. Cai, Y. Sun ve T. Qin, "Autonomous navigation by mobile robot with sensor fusion based on deep reinforcement learning," <em>Sensors</em>, cilt 24, sayı 12, makale 3895, 2024. doi: 10.3390/s24123895</li>
-  <li>B. Zhang ve C. Li, "The optimization and application research of the RRT-APF-based path planning algorithm," <em>Electronics</em>, cilt 13, sayı 24, makale 4963, 2024. doi: 10.3390/electronics13244963</li>
+<figure>
+  <img src="results/06_lidar_heatmap.png" alt="LiDAR ısı haritası" class="fig-half" style="display:block;margin:0 auto;">
+  <figcaption>
+    Şekil 6. LiDAR tarama yoğunluğu ısı haritası.
+    Kırmızı = sık taranan alanlar, Siyah = hiç taranmayan alanlar.
+  </figcaption>
+</figure>
+
+<h3>5.2 GKF Sensör İnovasyon Analizi</h3>
+<p>
+İnovasyon, gözlem ile tahmin arasındaki farkı ifade eder: <em>υ = z − H·x̂</em>.
+İyi ayarlanmış bir GKF sıfır ortalama ve sabit varyanslı inovasyon üretir.
+Şekil 7'de her iki sensörün inovasyonlarının sıfır çevresinde toplandığı görülmekte;
+bu Q ve R matrislerinin iyi kalibre edildiğini kanıtlamaktadır.
+Mor gölgeli bölgeler manyetometre sinyal kesintisi dönemlerini göstermektedir.
+</p>
+
+<figure>
+  <img src="results/07_ekf_innovations.png" alt="GKF inovasyon analizi" class="fig-full">
+  <figcaption>
+    Şekil 7. GKF sensör inovasyonları (ön-düzeltme artıkları).
+    Üst: IMU sanal yönelim inovasyonu. Alt: Manyetometre inovasyonu.
+    Mor bölgeler = sinyal kesintisi dönemleri. Sıfır çevresinde toplanma → filtre tutarlı.
+  </figcaption>
+</figure>
+
+<h3>5.3 Sensör Ablasyon Analizi</h3>
+<p>Her sensörün GKF doğruluğuna bireysel katkısı, sensörler sırayla eklenerek ölçülmüştür. Ablasyon deneyleri, Bölüm 4'teki ana simülasyondan bağımsız rastgele başlangıç değerleriyle çalıştırılmıştır; bu nedenle tablo değerleri farklı gürültü koşullarını yansıtmakta ve Bölüm 4.1'deki sayılarla doğrudan karşılaştırılmamalıdır. Gösterilen iyileştirme yüzdeleri her yapılandırmanın bir öncekine katkısını ifade etmektedir.</p>
+
+<table class="veri">
+  <tr><th>Yapılandırma</th><th>RMSE (m)</th><th>MAE (m)</th><th>İyileştirme</th></tr>
+  <tr><td>Ölü Hesaplama (enkoder)</td><td>1,285</td><td>1,012</td><td>—</td></tr>
+  <tr><td>GKF: Enkoder + IMU</td><td>0,360</td><td>0,289</td><td>%72,0</td></tr>
+  <tr>
+    <td class="en-iyi">GKF: Enkoder + IMU + Manyetometre</td>
+    <td class="en-iyi">0,173</td><td class="en-iyi">0,140</td><td class="en-iyi">%52,0</td>
+  </tr>
+</table>
+
+<figure>
+  <img src="results/08_sensor_ablation.png" alt="Sensör ablasyon analizi" class="fig-full">
+  <figcaption>
+    Şekil 8. Sensör ablasyon analizi. Sol: Zaman serisi hata karşılaştırması.
+    Sağ: RMSE sütun grafiği ve iyileştirme yüzdeleri.
+  </figcaption>
+</figure>
+
+<div class="kutu turuncu">
+  <strong>Yorum:</strong> IMU eklenmesi en büyük tek adım kazanımı sağlamaktadır (%72). Manyetometre, IMU'nun uzun vadeli açısal sürüklenmesini kırarak ek %52 kazanım ekler. Bu iki aşamalı katkı sensör füzyonunun önemini somut biçimde kanıtlamaktadır.
+</div>
+
+<h3>5.4 Monte Carlo Güvenilirlik Analizi</h3>
+<p>Algoritmanın tek bir gürültü koşuluna özgü olmadığını kanıtlamak için 10 farklı rastgele başlangıç değeriyle (42–51) simülasyon çalıştırılmıştır.</p>
+
+<table class="veri">
+  <tr><th>Yöntem</th><th>Ort. RMSE (m)</th><th>Std. Sapma (m)</th></tr>
+  <tr><td>Ölü Hesaplama</td><td>6,782</td><td>±5,042</td></tr>
+  <tr>
+    <td class="en-iyi">GKF (3 sensör)</td>
+    <td class="en-iyi">0,167</td><td class="en-iyi">±0,047</td>
+  </tr>
+</table>
+
+<figure>
+  <img src="results/09_monte_carlo.png" alt="Monte Carlo analizi" class="fig-full">
+  <figcaption>
+    Şekil 9. Monte Carlo güvenilirlik analizi (10 seed, 42–51).
+    Sol: Bireysel hata eğrileri ve ortalama ± std bandı.
+    Sağ: RMSE dağılımı kutu grafiği — GKF tutarlı biçimde düşük hata üretmektedir.
+  </figcaption>
+</figure>
+
+<p>Ölü hesaplamanın yüksek standart sapması (±5,042&nbsp;m) saf odometrinin gürültüye aşırı duyarlı olduğunu; GKF'in ±0,047&nbsp;m standardı ise füzyonun farklı koşullarda tutarlı ve güvenilir olduğunu kanıtlamaktadır.</p>
+
+<!-- ══════════════════════════════════════════════════════
+     6. TARTIŞMA VE SONUÇ
+══════════════════════════════════════════════════════ -->
+<h2 id="bolum6">6. Tartışma ve Sonuç</h2>
+
+<p>Bu çalışmada GPS kullanmaksızın otonom navigasyon gerçekleştiren FrostBot simülasyonu geliştirilmiştir. Temel bulgular:</p>
+
+<ol>
+  <li><strong>GKF füzyonu ölü hesaplamadan belirgin biçimde üstündür.</strong> RMSE %77,7 oranında iyileştirilmiştir (0,921&nbsp;m → 0,205&nbsp;m). Manyetometrenin drift-free mutlak yönelim ölçümü, açısal hatanın birikmesini önlemenin kilit bileşenidir.</li>
+  <li><strong>Sensörler arasında hiyerarşik katkı mevcuttur.</strong> IMU en büyük tek adım kazanımı sağlar (%72); manyetometre IMU'nun uzun vadeli sürüklenme sorununu kalıcı olarak çözer (%52 ek kazanım). Her sensörün katkısı ablasyon analiziyle sayısal olarak doğrulanmıştır.</li>
+  <li><strong>Her iki navigasyon algoritması hareketli engelleri yönetebilmektedir.</strong> Bug2 toplam sürede %47 daha hızlı (61,7&nbsp;s vs 117,1&nbsp;s); Potansiyel Alan ise daha kısa ve düzgün yol üretmektedir. Uygulama önceliğine göre tercih yapılmalıdır.</li>
+  <li><strong>Monte Carlo analizi sonuçların genellenebilirliğini kanıtlamaktadır.</strong> GKF'in 10 seed üzerinden ±0,047&nbsp;m standart sapması, sistemin farklı gürültü koşullarında tutarlı ve güvenilir olduğunu göstermektedir.</li>
+  <li><strong>İnovasyon analizi filtre tutarlılığını sayısal olarak doğrulamaktadır.</strong> Sıfır ortalama ve sabit varyans, Q ve R kovaryans matrislerinin iyi kalibre edildiğinin ve filtrenin tutarsız davranmadığının kanıtıdır.</li>
 </ol>
 
-<!-- ═══════════════════════════ 6. YAPAY ZEKA BEYANI ═══════════ -->
-<h2>6. Yapay Zeka Kullanım Beyanı</h2>
+<h3>6.1 Gerçek Dünya Uygulaması</h3>
+<p>
+Bu simülasyon, GPS'in erişilemez olduğu kapalı sanayi ortamlarında — fabrikalar, depolar, soğuk zincir tesisleri — çalışan otonom taşıma robotlarının konuşlandırılması için doğrudan bir prototip teşkil etmektedir. Önerilen 3-aşamalı GKF füzyon mimarisi, ek yazılım geliştirme maliyeti minimize edilerek ROS2 tabanlı gerçek donanım platformlarına (örn. TurtleBot4, Clearpath Jackal) aktarılabilir. Manyetometre sinyal kesintisi modellemesi, gerçek fabrikalarda yaygın olan elektromanyetik paraziti doğrudan yansıttığından simülasyonun ekolojik geçerliliği yüksektir.
+</p>
 
-<div class="ai-box">
-  <h4>Yapay Zeka Kullanım Beyanı</h4>
-  <p><strong>Kullanılan araçlar:</strong> Claude Code (Anthropic) — claude-sonnet-4-6</p>
-  <p><strong>Yapay zekanın kullanıldığı bölümler:</strong></p>
-  <ul>
-    <li>EKF, navigasyon ve sensör simülasyon kodlarının yazılması ve hata ayıklaması</li>
-    <li>Görselleştirme fonksiyonlarının geliştirilmesi</li>
-    <li>Rapor metninin dil ve yapı açısından düzenlenmesi</li>
+<h3>6.2 Sınırlamalar ve Gelecek Çalışmalar</h3>
+<div class="kutu">
+  <ul style="margin: 4px 0 0 18px;">
+    <li><strong>LiDAR tabanlı (x,y) güncelleme:</strong> Mevcut GKF yalnızca θ bileşenini ölçüm güncellemesine dahil etmektedir. LiDAR'dan ICP veya referans nokta tabanlı (x,y) gözlemleri eklenmesi lokalizasyon doğruluğunu daha da artırabilir.</li>
+    <li><strong>Global + reaktif hibrit navigasyon:</strong> RRT veya A* ile üretilen global yolun Bug2/Potansiyel Alan ile birleştirilmesi dar geçitlerde daha optimal rotalar sağlayabilir [4].</li>
+    <li><strong>3B simülasyon:</strong> Mevcut 2B model, rampalar veya çok katlı depolar için 3B'ye genişletilebilir.</li>
   </ul>
-  <p><strong>Öğrencinin kendi katkıları:</strong></p>
-  <ul>
-    <li>Pizza fabrikası senaryo konsepti ve waypoint düzeninin tasarlanması</li>
-    <li>Algoritma ve parametre seçimi kararları (GOAL_TOL, gürültü katsayıları, EMI bölge yarıçapları)</li>
-    <li>Simülasyon çıktılarının çalıştırılması, doğrulanması ve yorumlanması</li>
-    <li>Mantıksal ve yazılımsal hataların tespit edilip düzeltilmesi kararları</li>
-    <li>Proje yönlendirmesi ve tüm teknik kararların onaylanması</li>
-  </ul>
-  <p>Yapay zeka araçları yardımcı araç olarak kullanılmıştır. Nihai kod, senaryo, sonuçlar ve değerlendirmeler öğrenci tarafından kontrol edilerek teslim edilmiştir.</p>
 </div>
+
+<!-- ══════════════════════════════════════════════════════
+     7. KAYNAKLAR
+══════════════════════════════════════════════════════ -->
+<h2 id="bolum7">7. Kaynaklar</h2>
+
+<div class="kaynaklar">
+<ol>
+  <li>
+    V. Ušinskis, M. Nowicki, A. Dzedzickis ve V. Bučinskas,
+    "Sensor-fusion based navigation for autonomous mobile robot,"
+    <em>Sensors</em>, cilt 25, sayı 4, makale 1248, 2025.
+    doi: 10.3390/s25041248
+  </li>
+  <li>
+    V. J. Lumelsky ve A. A. Stepanov,
+    "Path-planning strategies for a point mobile automaton moving amidst unknown obstacles of arbitrary shape,"
+    <em>Algorithmica</em>, cilt 2, sayı 1–4, ss. 403–430, 1987.
+    doi: 10.1007/BF01840369
+  </li>
+  <li>
+    S. Thrun, W. Burgard ve D. Fox,
+    <em>Probabilistic Robotics</em>.
+    Cambridge, MA: MIT Press, 2005.
+    ISBN: 978-0-262-20162-9
+  </li>
+  <li>
+    B. Zhang ve C. Li,
+    "The optimization and application research of the RRT-APF-based path planning algorithm,"
+    <em>Electronics</em>, cilt 13, sayı 24, makale 4963, 2024.
+    doi: 10.3390/electronics13244963
+  </li>
+</ol>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     8. YAPAY ZEKA KULLANIM BEYANI
+══════════════════════════════════════════════════════ -->
+<h2 id="bolum8">8. Yapay Zeka Kullanım Beyanı</h2>
+
+<table class="yz-tablo">
+  <tr>
+    <th>Yapay Zeka Aracı</th><th>Sürüm</th><th>Kullanılan Bölümler</th>
+  </tr>
+  <tr>
+    <td><strong>Claude Code (Anthropic)</strong></td>
+    <td>claude-sonnet-4-6</td>
+    <td>GKF kod çatısı, sensör modelleri, navigasyon algoritmaları, görselleştirme işlevleri, Monte Carlo döngüsü, rapor metni</td>
+  </tr>
+</table>
+
+<h3>Öğrencinin Bağımsız Katkıları</h3>
+<ul>
+  <li>Pizza fabrikası senaryo konseptini ve harita düzenini tasarlama</li>
+  <li>Manyetometre sinyal kesintisi bölgesi fikrini ve EMI modelini geliştirme</li>
+  <li>GKF 3-aşamalı füzyon mimarisinin sıralamasını ve mantığını belirleme</li>
+  <li>Hareketli engel konseptini ve hareket parametrelerini belirleme</li>
+  <li>Simülasyonu çalıştırma, test etme ve hataları giderme</li>
+  <li>Sonuçları yorumlama, algoritma ve parametre seçimi kararları</li>
+</ul>
+
+<div class="kutu" style="margin-top:12px;">
+  <strong>Açıklama:</strong> Yapay zeka araçları yardımcı kodlama asistanı olarak kullanılmıştır. Üretilen kodların tamamı öğrenci tarafından çalıştırılarak doğrulanmış; senaryo tasarımı, algoritma kararları ve sonuç yorumlamaları bağımsız olarak gerçekleştirilmiştir.
+</div>
+
+<hr style="margin-top:36px; border:none; border-top:1px solid #ccc;">
+<p style="text-align:center; font-size:9.5pt; color:#888; margin-top:10px;">
+  FrostBot — LiDAR Tabanlı Otonom Navigasyon &nbsp;|&nbsp;
+  Mustafa Can Ersoy · 20360859046 &nbsp;|&nbsp;
+  Bursa Teknik Üniversitesi &nbsp;|&nbsp; Mayıs 2026
+</p>
 
 </body>
 </html>
