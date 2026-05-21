@@ -24,12 +24,13 @@ from navigation import PotentialFieldNav, Bug2Nav
 from visualization import (
     plot_environment, plot_paths, plot_lidar,
     plot_localization, plot_errors, create_animation,
-    plot_lidar_heatmap,
+    plot_lidar_heatmap, plot_ekf_innovations,
+    plot_sensor_ablation, plot_monte_carlo,
 )
 
 DT        = 0.1    # simulation timestep (s)
 MAX_STEPS = 4000   # ~400 s max simulation time
-GOAL_TOL  = 1.5    # waypoint reached threshold (m)
+GOAL_TOL  = 0.8    # waypoint reached threshold (m)
 
 
 def _path_length(true_path, up_to_step):
@@ -40,7 +41,7 @@ def _path_length(true_path, up_to_step):
 
 # ------------------------------------------------------------------ #
 
-def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
+def run_simulation(navigator_type='potential_field', seed=42, verbose=True, lite=False):
     np.random.seed(seed)
 
     env    = Environment()
@@ -57,6 +58,15 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         R_imu=np.array([[0.003]]),
         R_mag=np.array([[0.008]]),
     )
+    # Ablation variant: encoder + IMU only (skipped in lite/Monte-Carlo mode)
+    if not lite:
+        ekf_imu = ExtendedKalmanFilter(
+            initial_state=[env.start[0], env.start[1], np.pi / 4],
+            P0=np.diag([0.1, 0.1, 0.05]),
+            Q=np.diag([0.005, 0.005, 0.002]),
+            R_imu=np.array([[0.003]]),
+            R_mag=np.array([[0.008]]),
+        )
     dr = DeadReckoning(env.start[0], env.start[1], np.pi / 4)
 
     if navigator_type == 'potential_field':
@@ -64,16 +74,19 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
     else:
         nav = Bug2Nav(env.start.copy())
 
-    true_path        = [robot.state.copy()]
-    ekf_path         = [ekf.state.copy()]
-    dr_path          = [dr.state.copy()]
+    true_path    = [robot.state.copy()]
+    ekf_path     = [ekf.state.copy()]
+    ekf_imu_path = [ekf_imu.state.copy()] if not lite else None
+    dr_path      = [dr.state.copy()]
     lidar_snapshots  = []          # (step, true_dist, noisy_dist) every 15 steps
     cov_history      = []          # (step, xy_pos, 2x2_cov) every 30 steps
     waypoint_log     = []          # {name, step, time} when each WP is reached
     forklift_history = [(env.forklift.x, env.forklift.y)]  # aligned with true_path
     palet_history    = [(env.palet.x,    env.palet.y)]
-    mag_history      = []          # raw magnetometer theta readings (None = blackout)
-    heatmap          = np.zeros((100, 100))   # LiDAR hit-point density
+    mag_history             = []   # raw magnetometer theta readings (None = blackout)
+    imu_innovation_history  = []   # pre-fit IMU theta innovations (rad)
+    mag_innovation_history  = []   # pre-fit magnetometer innovations (rad, None = blackout)
+    heatmap                 = np.zeros((100, 100))   # LiDAR hit-point density
     wp_idx           = 0
 
     for step in range(MAX_STEPS):
@@ -97,6 +110,8 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
                 break
             if navigator_type == 'bug2':
                 nav.reset(robot.state[:2].copy())
+            else:
+                nav.reset()   # clear stuck-detection history between waypoints
             goal = env.waypoints[wp_idx]
 
         # ---- Sensor readings ----
@@ -104,19 +119,37 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         omega_imu             = imu.measure(robot, env)
         v_enc, omega_enc      = enc.measure(robot, env)
 
-        # ---- EKF: predict (encoder) + update (IMU) + update (magnetometer) ----
-        theta_prev = ekf.state[2]
-        theta_mag  = mag.measure(robot, env)   # None inside blackout zones
-        ekf.predict(v_enc, omega_enc, DT)
-        ekf.update_theta(theta_prev + omega_imu * DT)
+        # ---- EKF: update (magnetometer t) → predict (t→t+1) → update (IMU t+1) ----
+        # Magnetometer corrects theta_t BEFORE predict, so the prediction carries
+        # the corrected heading forward — avoids applying a time-t observation to
+        # an already-predicted time-(t+1) state.
+        theta_mag = mag.measure(robot, env)   # None inside blackout zones
+        mag_innov = None
         if theta_mag is not None:
-            ekf.update_theta_mag(theta_mag)
+            # Scale R_mag with the actual EMI noise multiplier so the EKF
+            # trusts the magnetometer less in high-interference zones.
+            mag_mult = env.noise_multiplier(robot.state[0], robot.state[1])
+            R_zone   = np.array([[(mag.theta_noise_std * mag_mult) ** 2]])
+            mag_innov = ekf.update_theta_mag(theta_mag, R=R_zone)
+        theta_prev = ekf.state[2]             # post-magnetometer theta estimate
+        ekf.predict(v_enc, omega_enc, DT)
+        imu_innov  = ekf.update_theta(theta_prev + omega_imu * DT)
+
+        # ---- EKF-IMU ablation variant (encoder + IMU, no magnetometer) ----
+        if not lite:
+            theta_prev_imu = ekf_imu.state[2]
+            ekf_imu.predict(v_enc, omega_enc, DT)
+            ekf_imu.update_theta(theta_prev_imu + omega_imu * DT)
 
         # ---- Dead reckoning (encoder only) ----
         dr.step(v_enc, omega_enc, DT)
 
         # ---- Navigation command ----
         v_cmd, omega_cmd = nav.compute(robot.state, goal, noisy_dist, lidar.angles)
+
+        # Capture scan pose before moving — heatmap must project distances from
+        # the pose at which the scan was taken, not the post-move pose.
+        scan_state = robot.state.copy()
 
         # ---- Move robot (ground truth) ----
         robot.step(v_cmd, omega_cmd, DT, env)
@@ -127,17 +160,21 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         # ---- Store data ----
         true_path.append(robot.state.copy())
         ekf_path.append(ekf.state.copy())
+        if not lite:
+            ekf_imu_path.append(ekf_imu.state.copy())
         dr_path.append(dr.state.copy())
         forklift_history.append((env.forklift.x, env.forklift.y))
         palet_history.append((env.palet.x, env.palet.y))
         mag_history.append(theta_mag)
+        imu_innovation_history.append(imu_innov)
+        mag_innovation_history.append(mag_innov)
 
         # LiDAR heatmap — accumulate hit points (exclude max-range beams)
         mask = noisy_dist < lidar.max_range * 0.95
         if np.any(mask):
-            beam_ang = robot.state[2] + lidar.angles[mask]
-            px = robot.state[0] + noisy_dist[mask] * np.cos(beam_ang)
-            py = robot.state[1] + noisy_dist[mask] * np.sin(beam_ang)
+            beam_ang = scan_state[2] + lidar.angles[mask]
+            px = scan_state[0] + noisy_dist[mask] * np.cos(beam_ang)
+            py = scan_state[1] + noisy_dist[mask] * np.sin(beam_ang)
             H, _, _ = np.histogram2d(px, py, bins=100,
                                      range=[[0, env.WIDTH], [0, env.HEIGHT]])
             heatmap += H
@@ -160,15 +197,18 @@ def run_simulation(navigator_type='potential_field', seed=42, verbose=True):
         heatmap=heatmap,
         env=env,
         lidar=lidar,
+        ekf_imu_path=ekf_imu_path,   # None when lite=True
+        imu_innovation_history=imu_innovation_history,
+        mag_innovation_history=mag_innovation_history,
     )
 
 
 # ------------------------------------------------------------------ #
 
 def main():
-    if os.path.exists('outputs'):
-        shutil.rmtree('outputs')
-    os.makedirs('outputs')
+    if os.path.exists('results'):
+        shutil.rmtree('results')
+    os.makedirs('results')
 
     print("=" * 55)
     print("  FrostBot — Pizza Fabrikası Simülasyonu")
@@ -224,9 +264,31 @@ def main():
         print(f"  {pf_wp['name']:<22} {pf_wp['time']:>8.1f}s {pf_dist:>10.1f}m"
               f" {b2_wp['time']:>10.1f}s {b2_dist:>12.1f}m")
 
-    # Animasyon
     # 6 — LiDAR heatmap
     plot_lidar_heatmap(env, pf['heatmap'])
+
+    # 7 — EKF innovation (sensor residuals)
+    plot_ekf_innovations(pf['imu_innovation_history'],
+                         pf['mag_innovation_history'], dt=DT)
+
+    # 8 — Sensor ablation
+    plot_sensor_ablation(env, pf['true_path'], pf['dr_path'],
+                         pf['ekf_imu_path'], pf['ekf_path'], dt=DT)
+
+    # 9 — Monte Carlo robustness (10 seeds)
+    print("\nMonte Carlo analizi (10 seed, 42-51) çalışıyor...")
+    mc_ekf_errors, mc_dr_errors = [], []
+    for s in range(42, 52):
+        r  = run_simulation('potential_field', seed=s, verbose=False, lite=True)
+        n  = min(len(r['true_path']), len(r['ekf_path']), len(r['dr_path']))
+        ta = np.array(r['true_path'][:n])
+        mc_ekf_errors.append(
+            np.linalg.norm(ta[:, :2] - np.array(r['ekf_path'][:n])[:, :2], axis=1))
+        mc_dr_errors.append(
+            np.linalg.norm(ta[:, :2] - np.array(r['dr_path'][:n])[:, :2], axis=1))
+        rmse_s = float(np.sqrt(np.mean(mc_ekf_errors[-1] ** 2)))
+        print(f"  seed {s:2d}: EKF RMSE = {rmse_s:.3f} m")
+    plot_monte_carlo(mc_ekf_errors, mc_dr_errors, dt=DT)
 
     print("\nAnimasyon oluşturuluyor (bu birkaç dakika sürebilir)...")
     create_animation(env, pf['true_path'], pf['ekf_path'],
@@ -234,7 +296,7 @@ def main():
                      pf['forklift_history'], pf['palet_history'])
 
     print("\n" + "=" * 55)
-    print("  Tüm çıktılar 'outputs/' klasörüne kaydedildi.")
+    print("  Tüm çıktılar 'results/' klasörüne kaydedildi.")
     print("=" * 55)
 
 

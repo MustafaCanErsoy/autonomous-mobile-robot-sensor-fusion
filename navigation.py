@@ -19,6 +19,11 @@ class PotentialFieldNav:
         self._hist         = []
         self._escape_steps = 0
 
+    def reset(self):
+        """Clear movement history and escape counter on each new waypoint."""
+        self._hist         = []
+        self._escape_steps = 0
+
     def compute(self, state, goal, distances, angles):
         x, y, theta = state
         gx, gy      = goal
@@ -115,7 +120,7 @@ class Bug2Nav:
         # Front sector ±20° around heading
         n           = len(distances)
         front_idx   = list(range(n - n // 18, n)) + list(range(0, n // 18))
-        front_min   = float(np.min([distances[i] for i in front_idx]))
+        front_min   = float(distances[np.array(front_idx)].min())
 
         if self._mode == 'GO_TO_GOAL':
             self._wall_steps = 0

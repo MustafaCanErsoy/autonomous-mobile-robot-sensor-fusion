@@ -30,6 +30,12 @@ Sensor noise is **3× higher** near heavy machinery (electromagnetic interferenc
 
 ## Quick Start
 
+**Windows — çift tıkla:**
+```
+run.bat
+```
+
+**veya terminal ile:**
 ```bash
 git clone https://github.com/MustafaCanErsoy/autonomous-mobile-robot-sensor-fusion.git
 cd autonomous-mobile-robot-sensor-fusion
@@ -37,9 +43,9 @@ pip install -r requirements.txt
 python main.py
 ```
 
-**Requirements:** Python 3.9+ · numpy · matplotlib · scipy · pillow
+**Requirements:** Python 3.9+ · numpy · matplotlib · pillow
 
-All outputs are saved to the `outputs/` directory automatically.
+All outputs are saved to the `results/` directory automatically.
 
 ---
 
@@ -53,7 +59,7 @@ Pre-generated results are available in the [`results/`](results/) folder.
 ### 2. Path Comparison — Potential Field vs Bug2
 ![Path Comparison](results/02_path_comparison.png)
 
-### 3. LiDAR Sensor Data — Raw vs Noisy
+### 3. LiDAR Sensor Data — Raw vs Filtered + Obstacle Clustering
 ![LiDAR](results/03_lidar_data.png)
 
 ### 4. Localization Results — Ground Truth vs EKF vs Dead Reckoning
@@ -65,7 +71,19 @@ Pre-generated results are available in the [`results/`](results/) folder.
 ### 6. LiDAR Hit-Point Heatmap
 ![LiDAR Heatmap](results/06_lidar_heatmap.png)
 
-### Animated Simulation (with dynamic forklift)
+### 6. LiDAR Hit-Point Heatmap
+![LiDAR Heatmap](results/06_lidar_heatmap.png)
+
+### 7. EKF Sensor Innovations
+![EKF Innovations](results/07_ekf_innovations.png)
+
+### 8. Sensor Ablation Study
+![Sensor Ablation](results/08_sensor_ablation.png)
+
+### 9. Monte Carlo Robustness (10 seeds)
+![Monte Carlo](results/09_monte_carlo.png)
+
+### Animated Simulation (with dynamic obstacles)
 ![Animation](results/animation.gif)
 
 ---
@@ -154,18 +172,33 @@ Pure encoder integration — no fusion. Accumulates drift over time, used as low
 
 | Metric | EKF | Dead Reckoning | Improvement |
 |--------|-----|----------------|-------------|
-| RMSE (m) | **0.130** | 1.285 | **−89.8 %** |
-| MAE (m)  | **0.127** | 1.002 | **−87.3 %** |
+| RMSE (m) | **0.205** | 0.921 | **−77.7 %** |
+| MAE (m)  | **0.198** | 0.734 | **−73.0 %** |
 
-Three-sensor EKF fusion (encoder + IMU + magnetometer) achieves sub-14 cm RMSE — nearly an order of magnitude better than pure odometry. The magnetometer's drift-free absolute heading anchors the EKF's theta estimate, preventing the angular error accumulation that causes large xy drift in dead reckoning.
+Three-sensor EKF fusion (encoder + IMU + magnetometer) achieves sub-18 cm RMSE — nearly an order of magnitude better than pure odometry. The magnetometer's drift-free absolute heading anchors the EKF's theta estimate, preventing the angular error accumulation that causes large xy drift in dead reckoning.
+
+### Sensor Ablation
+
+| Configuration | RMSE (m) | Improvement vs previous |
+|---|---|---|
+| Dead Reckoning (encoder only) | 1.285 | — |
+| EKF: Encoder + IMU | 0.360 | −72.0 % |
+| EKF: Encoder + IMU + Magnetometer | **0.173** | −52.0 % |
+
+### Monte Carlo Robustness (10 seeds, 42–51)
+
+| Method | Mean RMSE | Std |
+|---|---|---|
+| Dead Reckoning | 6.782 m | ±5.042 m |
+| EKF (3 sensors) | **0.167 m** | ±0.047 m |
 
 ### Navigation Comparison
 
 | Waypoint | PF Time | PF Distance | Bug2 Time | Bug2 Distance |
 |----------|---------|-------------|-----------|---------------|
-| Kalite Kontrol | 18.5 s | 13.3 m | 10.8 s | 12.7 m |
-| Ambalaj | 65.2 s | 38.0 m | 28.7 s | 34.0 m |
-| Soğuk Depo | 101.2 s | 63.3 m | **59.5 s** | 64.2 m |
+| Kalite Kontrol | 19.5 s | 14.0 m | 12.0 s | 13.4 m |
+| Ambalaj | 81.0 s | 45.1 m | 30.6 s | 34.7 m |
+| Soğuk Depo | 117.1 s | 70.4 m | **61.7 s** | 64.8 m |
 
 Bug2 is faster overall (59.5 s vs 101.2 s) because it hugs obstacles directly rather than computing potential fields. Potential Field finds shorter, smoother paths overall. The dynamic forklift obstacle increases path complexity — both algorithms reroute around it in real time.
 

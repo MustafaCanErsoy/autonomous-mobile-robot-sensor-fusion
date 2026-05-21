@@ -6,7 +6,7 @@ class PaletRobot:
 
     PATH_X    = 20.0   # m  (fixed x)
     PATH_YMIN = 12.0   # m
-    PATH_YMAX = 31.0   # m
+    PATH_YMAX = 29.0   # m  (was 31 — kept 3 m from Etiketleme bottom edge at y=32)
     SPEED     =  0.45  # m/s
     RADIUS    =  0.7   # m
 

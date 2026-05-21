@@ -17,12 +17,12 @@ class DifferentialDriveRobot:
         theta_new = np.arctan2(np.sin(theta + omega * dt),
                                np.cos(theta + omega * dt))
 
-        # Collision check — if new position is inside an obstacle, stay put
-        if env is not None and env.is_collision(x_new, y_new, margin=0.4):
+        collision = env is not None and env.is_collision(x_new, y_new, margin=0.4)
+        if collision:
             x_new, y_new = x, y
 
         self.state = np.array([x_new, y_new, theta_new])
-        self.v     = v
+        self.v     = 0.0 if collision else v   # encoder reads 0 when blocked by wall
         self.omega = omega
 
     def wheel_velocities(self):

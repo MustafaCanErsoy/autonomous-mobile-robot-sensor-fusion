@@ -59,6 +59,7 @@ class ExtendedKalmanFilter:
         self.state[2] = np.arctan2(np.sin(self.state[2]), np.cos(self.state[2]))
         self.P = (np.eye(3) - K @ H) @ self.P
         self.P = (self.P + self.P.T) / 2.0   # enforce symmetry against float drift
+        return float(innov[0])                # pre-fit innovation (for logging)
 
     # ------------------------------------------------------------------ #
     #  Convenience: IMU theta update                                      #
@@ -67,12 +68,12 @@ class ExtendedKalmanFilter:
     def update_theta(self, z_theta, R=None):
         """Update with a virtual theta measurement from IMU integration."""
         H = np.array([[0.0, 0.0, 1.0]])
-        self.update(np.array([z_theta]), H, R if R is not None else self.R_imu)
+        return self.update(np.array([z_theta]), H, R if R is not None else self.R_imu)
 
     def update_theta_mag(self, z_theta, R=None):
         """Update with a direct absolute heading from magnetometer."""
         H = np.array([[0.0, 0.0, 1.0]])
-        self.update(np.array([z_theta]), H, R if R is not None else self.R_mag)
+        return self.update(np.array([z_theta]), H, R if R is not None else self.R_mag)
 
     def get_xy_covariance(self):
         """Return the 2×2 [x, y] covariance submatrix."""
