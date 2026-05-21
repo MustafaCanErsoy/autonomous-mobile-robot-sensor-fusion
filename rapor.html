@@ -349,11 +349,11 @@
   otonom navigasyon gerçekleştiren <em>FrostBot</em> adlı diferansiyel sürüşlü mobil robot simüle edilmiştir.
   Ortam; 15 sabit engel ve 2 hareketli engel (forklift + palet robotu) içermektedir.
   Robot; LiDAR, Atalet Ölçüm Birimi (IMU), tekerlek enkoderi ve manyetometre sensörlerini
-  3&nbsp;aşamalı Genişletilmiş Kalman Filtresi (GKF) ile birleştirerek konum tahmini yapmaktadır.
+  3&nbsp;aşamalı Genişletilmiş Kalman Filtresi (EKF) ile birleştirerek konum tahmini yapmaktadır.
   Potansiyel Alan ve Bug2 navigasyon algoritmaları karşılaştırmalı olarak test edilmiş;
-  GKF füzyonu ölü hesaplamaya kıyasla <strong>%77,7 RMSE iyileştirmesi</strong> sağlamıştır
+  EKF füzyonu ölü hesaplamaya kıyasla <strong>%77,7 RMSE iyileştirmesi</strong> sağlamıştır
   (0,205&nbsp;m → 0,921&nbsp;m). Beş zorunlu görselleştirmeye ek olarak
-  LiDAR tarama yoğunluğu ısı haritası, GKF inovasyon analizi,
+  LiDAR tarama yoğunluğu ısı haritası, EKF inovasyon analizi,
   sensör ablasyon analizi ve 10 tohumlu Monte Carlo güvenilirlik testi (Ort. RMSE: 0,167&nbsp;m, Std: ±0,047&nbsp;m)
   olmak üzere <strong>4 ileri analiz</strong> daha sunulmaktadır.<br><br>
   <strong>Anahtar Kelimeler:</strong>
@@ -471,7 +471,7 @@ x' = x + v·cos(θ)·∆t &nbsp;&nbsp; y' = y + v·sin(θ)·∆t &nbsp;&nbsp; θ
 
 <table class="veri">
   <tr>
-    <th>Sensör</th><th>Ölçülen Büyüklük</th><th>Gürültü σ</th><th>EMI Bölge σ</th><th>GKF'teki Rolü</th>
+    <th>Sensör</th><th>Ölçülen Büyüklük</th><th>Gürültü σ</th><th>EMI Bölge σ</th><th>EKF'teki Rolü</th>
   </tr>
   <tr>
     <td>LiDAR (180 ışın, 12 m)</td><td>Radyal mesafe</td><td>0,05 m</td><td>0,15 m</td><td>Navigasyon / engel algılama</td>
@@ -490,10 +490,10 @@ x' = x + v·cos(θ)·∆t &nbsp;&nbsp; y' = y + v·sin(θ)·∆t &nbsp;&nbsp; θ
 
 <p>LiDAR ham ölçümlerine medyan filtresi (pencere=7) uygulanarak sivri gürültüler bastırılır; ardından boşluk tabanlı kümeleme ile engel grupları tespit edilir [3]. Manyetometre birikmeli hata üretmez, bu nedenle IMU'nun uzun vadeli açısal sürüklenmesini kırmak için kritik öneme sahiptir.</p>
 
-<h3>2.3 Genişletilmiş Kalman Filtresi (GKF)</h3>
+<h3>2.3 Genişletilmiş Kalman Filtresi (EKF)</h3>
 
 <p>
-GKF, doğrusal olmayan hareket modelini Jacobian matrisi ile doğrusallaştırarak standart Kalman Filtresi'ni genişletir [3]. Durum vektörü <strong>x&nbsp;=&nbsp;[x, y, θ]</strong><sup>T</sup>. Her adımda üç aşama uygulanır:
+EKF, doğrusal olmayan hareket modelini Jacobian matrisi ile doğrusallaştırarak standart Kalman Filtresi'ni genişletir [3]. Durum vektörü <strong>x&nbsp;=&nbsp;[x, y, θ]</strong><sup>T</sup>. Her adımda üç aşama uygulanır:
 </p>
 
 <h4>Aşama 1 — Manyetometre Ön Güncellemesi (sinyal kesintisi yoksa)</h4>
@@ -524,7 +524,7 @@ x̂ = x̂⁻ + K·(z − H·x̂⁻) &nbsp;|&nbsp; P = (I − K·H)·P⁻
 
 <p><strong>Bug2:</strong> HEDEFE_GİT ↔ DUVAR_TAKİP iki durumlu durum makinesi. Ön sektörde engel algılandığında sınır takip moduna geçer; M-çizgisini hedefe daha yakın bir noktada yeniden kesiştirdiğinde geri döner. 120 adımlık zaman aşımı sonsuz döngüyü önler [2].</p>
 
-<p><strong>Ölü Hesaplama (kıyaslama):</strong> Saf enkoder entegrasyonu, füzyon yok. Zamanla birikimli drift üretir; GKF için alt sınır ölçütü olarak kullanılır.</p>
+<p><strong>Ölü Hesaplama (kıyaslama):</strong> Saf enkoder entegrasyonu, füzyon yok. Zamanla birikimli drift üretir; EKF için alt sınır ölçütü olarak kullanılır.</p>
 
 <!-- ══════════════════════════════════════════════════════
      3. GEREKLİ ÇIKTILAR
@@ -533,7 +533,7 @@ x̂ = x̂⁻ + K·(z − H·x̂⁻) &nbsp;|&nbsp; P = (I − K·H)·P⁻
 <h2 id="bolum3">3. Gerekli Çıktılar</h2>
 
 <h3>3.1 Ortam Haritası</h3>
-<p>Bölüm 1'de sunulan ortam haritası (Şekil 1), simülasyonun tam ölçekli bağlamını göstermektedir. 15 sabit engel EMI yoğunluğuna göre renk kodlanmış (kırmızı = yüksek gürültü kaynağı makine, mavi = konveyör, gri = sütun), 2 hareketli engel noktalı hareket alanlarıyla gösterilmiştir. Manyetometre sinyal kesinti bölgeleri mor dairelerle vurgulanmıştır; bu bölgeler GKF'in aşama 1 güncellemesini devre dışı bıraktığı kritik alanlardır ve lokalizasyon zorluğunu artırır.</p>
+<p>Bölüm 1'de sunulan ortam haritası (Şekil 1), simülasyonun tam ölçekli bağlamını göstermektedir. 15 sabit engel EMI yoğunluğuna göre renk kodlanmış (kırmızı = yüksek gürültü kaynağı makine, mavi = konveyör, gri = sütun), 2 hareketli engel noktalı hareket alanlarıyla gösterilmiştir. Manyetometre sinyal kesinti bölgeleri mor dairelerle vurgulanmıştır; bu bölgeler EKF'in aşama 1 güncellemesini devre dışı bıraktığı kritik alanlardır ve lokalizasyon zorluğunu artırır.</p>
 
 <h3>3.2 Yol Karşılaştırması</h3>
 <p>Planlanan ideal yol (siyah kesikli — engeller gözetilmeksizin doğrudan hat) ile her iki algoritmanın ürettiği gerçek yollar aynı grafik üzerinde karşılaştırılmıştır. <strong>Potansiyel Alan</strong> yolu düzgün ve sürekli eğrilerden oluşmakta; yerel minimumlarda rastgele kaçış manevraları küçük sapmalara neden olmaktadır. <strong>Bug2</strong> yolu ise hedefe çok daha hızlı ulaşmakla birlikte sınır takip fazlarında keskin dönüşler içermektedir. Her iki algoritma da hareketli forkliftle anlık çarpışmadan kaçınmış; dinamik yeniden planlama yetkinliğini kanıtlamıştır.</p>
@@ -560,15 +560,15 @@ x̂ = x̂⁻ + K·(z − H·x̂⁻) &nbsp;|&nbsp; P = (I − K·H)·P⁻
 
 <h3>3.4 Lokalizasyon Sonuçları</h3>
 <p>
-Sol panel, gerçek yol (yeşil) ile GKF tahmini (mavi) ve ölü hesaplama (kırmızı) yollarını 2B uzayda karşılaştırmaktadır. GKF kovaryans elipsleri (%95 güven) robot belirsizliğini sayısal olarak yansıtmakta; EMI bölgelerinde elipsler genişlerken açık koridorlarda daralarak filtrenin ortama uyarlandığını göstermektedir. Sağ paneldeki x(t), y(t) ve θ(t) zaman serilerinde ölü hesaplamanın zamanla gerçek değerden ayrıştığı, GKF'in ise uzun rotada yakın kaldığı açıkça görülmektedir. θ(t) grafiğindeki mor gölgeler manyetometre kesinti dönemlerini işaretlemekte; bu bölgelerde GKF yalnızca IMU ile yönelim düzeltmesi yaparak sürüklenme birikmesini sınırlamaktadır.
+Sol panel, gerçek yol (yeşil) ile EKF tahmini (mavi) ve ölü hesaplama (kırmızı) yollarını 2B uzayda karşılaştırmaktadır. EKF kovaryans elipsleri (%95 güven) robot belirsizliğini sayısal olarak yansıtmakta; EMI bölgelerinde elipsler genişlerken açık koridorlarda daralarak filtrenin ortama uyarlandığını göstermektedir. Sağ paneldeki x(t), y(t) ve θ(t) zaman serilerinde ölü hesaplamanın zamanla gerçek değerden ayrıştığı, EKF'in ise uzun rotada yakın kaldığı açıkça görülmektedir. θ(t) grafiğindeki mor gölgeler manyetometre kesinti dönemlerini işaretlemekte; bu bölgelerde EKF yalnızca IMU ile yönelim düzeltmesi yaparak sürüklenme birikmesini sınırlamaktadır.
 </p>
 
 <figure>
   <img src="results/04_localization.png" alt="Lokalizasyon sonuçları" class="fig-full">
   <figcaption>
     Şekil 4. Lokalizasyon sonuçları.
-    Sol: 2B yol ve GKF kovaryans elipsleri (%95). Sağ: x(t), y(t), θ(t) —
-    Yeşil = Gerçek Değer, Mavi = GKF, Kırmızı = Ölü Hesaplama.
+    Sol: 2B yol ve EKF kovaryans elipsleri (%95). Sağ: x(t), y(t), θ(t) —
+    Yeşil = Gerçek Değer, Mavi = EKF, Kırmızı = Ölü Hesaplama.
     Mor gölge = manyetometre sinyal kesintisi.
   </figcaption>
 </figure>
@@ -601,13 +601,13 @@ e(t) = √[(x_g − x_t)² + (y_g − y_t)²] &nbsp;|&nbsp; RMSE = √(Σe²/N) 
     <td>0,921</td><td>0,734</td><td>—</td>
   </tr>
   <tr>
-    <td class="en-iyi">GKF (Enkoder + IMU + Manyetometre)</td>
+    <td class="en-iyi">EKF (Enkoder + IMU + Manyetometre)</td>
     <td class="en-iyi">0,205</td><td class="en-iyi">0,198</td><td class="en-iyi">%77,7</td>
   </tr>
 </table>
 
 <div class="kutu yesil">
-  <strong>Temel bulgu:</strong> 3 sensörlü GKF füzyonu RMSE'yi %77,7 oranında azaltmaktadır (0,921&nbsp;m → 0,205&nbsp;m). Manyetometrenin birikmeli hata içermeyen mutlak yönelim ölçümü açısal sürüklenmeyi kırar ve böylece <em>x-y</em> hatasının birikmesini doğrudan engeller.
+  <strong>Temel bulgu:</strong> 3 sensörlü EKF füzyonu RMSE'yi %77,7 oranında azaltmaktadır (0,921&nbsp;m → 0,205&nbsp;m). Manyetometrenin birikmeli hata içermeyen mutlak yönelim ölçümü açısal sürüklenmeyi kırar ve böylece <em>x-y</em> hatasının birikmesini doğrudan engeller.
 </div>
 
 <h3>4.2 Navigasyon Algoritması Karşılaştırması</h3>
@@ -642,33 +642,33 @@ e(t) = √[(x_g − x_t)² + (y_g − y_t)²] &nbsp;|&nbsp; RMSE = √(Σe²/N) 
   </figcaption>
 </figure>
 
-<h3>5.2 GKF Sensör İnovasyon Analizi</h3>
+<h3>5.2 EKF Sensör İnovasyon Analizi</h3>
 <p>
 İnovasyon, gözlem ile tahmin arasındaki farkı ifade eder: <em>υ = z − H·x̂</em>.
-İyi ayarlanmış bir GKF sıfır ortalama ve sabit varyanslı inovasyon üretir.
+İyi ayarlanmış bir EKF sıfır ortalama ve sabit varyanslı inovasyon üretir.
 Şekil 7'de her iki sensörün inovasyonlarının sıfır çevresinde toplandığı görülmekte;
 bu Q ve R matrislerinin iyi kalibre edildiğini kanıtlamaktadır.
 Mor gölgeli bölgeler manyetometre sinyal kesintisi dönemlerini göstermektedir.
 </p>
 
 <figure>
-  <img src="results/07_ekf_innovations.png" alt="GKF inovasyon analizi" class="fig-full">
+  <img src="results/07_ekf_innovations.png" alt="EKF inovasyon analizi" class="fig-full">
   <figcaption>
-    Şekil 7. GKF sensör inovasyonları (ön-düzeltme artıkları).
+    Şekil 7. EKF sensör inovasyonları (ön-düzeltme artıkları).
     Üst: IMU sanal yönelim inovasyonu. Alt: Manyetometre inovasyonu.
     Mor bölgeler = sinyal kesintisi dönemleri. Sıfır çevresinde toplanma → filtre tutarlı.
   </figcaption>
 </figure>
 
 <h3>5.3 Sensör Ablasyon Analizi</h3>
-<p>Her sensörün GKF doğruluğuna bireysel katkısı, sensörler sırayla eklenerek ölçülmüştür. Ablasyon deneyleri, Bölüm 4'teki ana simülasyondan bağımsız rastgele başlangıç değerleriyle çalıştırılmıştır; bu nedenle tablo değerleri farklı gürültü koşullarını yansıtmakta ve Bölüm 4.1'deki sayılarla doğrudan karşılaştırılmamalıdır. Gösterilen iyileştirme yüzdeleri her yapılandırmanın bir öncekine katkısını ifade etmektedir.</p>
+<p>Her sensörün EKF doğruluğuna bireysel katkısı, sensörler sırayla eklenerek ölçülmüştür. Ablasyon deneyleri, Bölüm 4'teki ana simülasyondan bağımsız rastgele başlangıç değerleriyle çalıştırılmıştır; bu nedenle tablo değerleri farklı gürültü koşullarını yansıtmakta ve Bölüm 4.1'deki sayılarla doğrudan karşılaştırılmamalıdır. Gösterilen iyileştirme yüzdeleri her yapılandırmanın bir öncekine katkısını ifade etmektedir.</p>
 
 <table class="veri">
   <tr><th>Yapılandırma</th><th>RMSE (m)</th><th>MAE (m)</th><th>İyileştirme</th></tr>
   <tr><td>Ölü Hesaplama (enkoder)</td><td>1,285</td><td>1,012</td><td>—</td></tr>
-  <tr><td>GKF: Enkoder + IMU</td><td>0,360</td><td>0,289</td><td>%72,0</td></tr>
+  <tr><td>EKF: Enkoder + IMU</td><td>0,360</td><td>0,289</td><td>%72,0</td></tr>
   <tr>
-    <td class="en-iyi">GKF: Enkoder + IMU + Manyetometre</td>
+    <td class="en-iyi">EKF: Enkoder + IMU + Manyetometre</td>
     <td class="en-iyi">0,173</td><td class="en-iyi">0,140</td><td class="en-iyi">%52,0</td>
   </tr>
 </table>
@@ -692,7 +692,7 @@ Mor gölgeli bölgeler manyetometre sinyal kesintisi dönemlerini göstermektedi
   <tr><th>Yöntem</th><th>Ort. RMSE (m)</th><th>Std. Sapma (m)</th></tr>
   <tr><td>Ölü Hesaplama</td><td>6,782</td><td>±5,042</td></tr>
   <tr>
-    <td class="en-iyi">GKF (3 sensör)</td>
+    <td class="en-iyi">EKF (3 sensör)</td>
     <td class="en-iyi">0,167</td><td class="en-iyi">±0,047</td>
   </tr>
 </table>
@@ -702,11 +702,11 @@ Mor gölgeli bölgeler manyetometre sinyal kesintisi dönemlerini göstermektedi
   <figcaption>
     Şekil 9. Monte Carlo güvenilirlik analizi (10 seed, 42–51).
     Sol: Bireysel hata eğrileri ve ortalama ± std bandı.
-    Sağ: RMSE dağılımı kutu grafiği — GKF tutarlı biçimde düşük hata üretmektedir.
+    Sağ: RMSE dağılımı kutu grafiği — EKF tutarlı biçimde düşük hata üretmektedir.
   </figcaption>
 </figure>
 
-<p>Ölü hesaplamanın yüksek standart sapması (±5,042&nbsp;m) saf odometrinin gürültüye aşırı duyarlı olduğunu; GKF'in ±0,047&nbsp;m standardı ise füzyonun farklı koşullarda tutarlı ve güvenilir olduğunu kanıtlamaktadır.</p>
+<p>Ölü hesaplamanın yüksek standart sapması (±5,042&nbsp;m) saf odometrinin gürültüye aşırı duyarlı olduğunu; EKF'in ±0,047&nbsp;m standardı ise füzyonun farklı koşullarda tutarlı ve güvenilir olduğunu kanıtlamaktadır.</p>
 
 <!-- ══════════════════════════════════════════════════════
      6. TARTIŞMA VE SONUÇ
@@ -716,22 +716,22 @@ Mor gölgeli bölgeler manyetometre sinyal kesintisi dönemlerini göstermektedi
 <p>Bu çalışmada GPS kullanmaksızın otonom navigasyon gerçekleştiren FrostBot simülasyonu geliştirilmiştir. Temel bulgular:</p>
 
 <ol>
-  <li><strong>GKF füzyonu ölü hesaplamadan belirgin biçimde üstündür.</strong> RMSE %77,7 oranında iyileştirilmiştir (0,921&nbsp;m → 0,205&nbsp;m). Manyetometrenin drift-free mutlak yönelim ölçümü, açısal hatanın birikmesini önlemenin kilit bileşenidir.</li>
+  <li><strong>EKF füzyonu ölü hesaplamadan belirgin biçimde üstündür.</strong> RMSE %77,7 oranında iyileştirilmiştir (0,921&nbsp;m → 0,205&nbsp;m). Manyetometrenin drift-free mutlak yönelim ölçümü, açısal hatanın birikmesini önlemenin kilit bileşenidir.</li>
   <li><strong>Sensörler arasında hiyerarşik katkı mevcuttur.</strong> IMU en büyük tek adım kazanımı sağlar (%72); manyetometre IMU'nun uzun vadeli sürüklenme sorununu kalıcı olarak çözer (%52 ek kazanım). Her sensörün katkısı ablasyon analiziyle sayısal olarak doğrulanmıştır.</li>
   <li><strong>Her iki navigasyon algoritması hareketli engelleri yönetebilmektedir.</strong> Bug2 toplam sürede %47 daha hızlı (61,7&nbsp;s vs 117,1&nbsp;s); Potansiyel Alan ise daha kısa ve düzgün yol üretmektedir. Uygulama önceliğine göre tercih yapılmalıdır.</li>
-  <li><strong>Monte Carlo analizi sonuçların genellenebilirliğini kanıtlamaktadır.</strong> GKF'in 10 seed üzerinden ±0,047&nbsp;m standart sapması, sistemin farklı gürültü koşullarında tutarlı ve güvenilir olduğunu göstermektedir.</li>
+  <li><strong>Monte Carlo analizi sonuçların genellenebilirliğini kanıtlamaktadır.</strong> EKF'in 10 seed üzerinden ±0,047&nbsp;m standart sapması, sistemin farklı gürültü koşullarında tutarlı ve güvenilir olduğunu göstermektedir.</li>
   <li><strong>İnovasyon analizi filtre tutarlılığını sayısal olarak doğrulamaktadır.</strong> Sıfır ortalama ve sabit varyans, Q ve R kovaryans matrislerinin iyi kalibre edildiğinin ve filtrenin tutarsız davranmadığının kanıtıdır.</li>
 </ol>
 
 <h3>6.1 Gerçek Dünya Uygulaması</h3>
 <p>
-Bu simülasyon, GPS'in erişilemez olduğu kapalı sanayi ortamlarında — fabrikalar, depolar, soğuk zincir tesisleri — çalışan otonom taşıma robotlarının konuşlandırılması için doğrudan bir prototip teşkil etmektedir. Önerilen 3-aşamalı GKF füzyon mimarisi, ek yazılım geliştirme maliyeti minimize edilerek ROS2 tabanlı gerçek donanım platformlarına (örn. TurtleBot4, Clearpath Jackal) aktarılabilir. Manyetometre sinyal kesintisi modellemesi, gerçek fabrikalarda yaygın olan elektromanyetik paraziti doğrudan yansıttığından simülasyonun ekolojik geçerliliği yüksektir.
+Bu simülasyon, GPS'in erişilemez olduğu kapalı sanayi ortamlarında — fabrikalar, depolar, soğuk zincir tesisleri — çalışan otonom taşıma robotlarının konuşlandırılması için doğrudan bir prototip teşkil etmektedir. Önerilen 3-aşamalı EKF füzyon mimarisi, ek yazılım geliştirme maliyeti minimize edilerek ROS2 tabanlı gerçek donanım platformlarına (örn. TurtleBot4, Clearpath Jackal) aktarılabilir. Manyetometre sinyal kesintisi modellemesi, gerçek fabrikalarda yaygın olan elektromanyetik paraziti doğrudan yansıttığından simülasyonun ekolojik geçerliliği yüksektir.
 </p>
 
 <h3>6.2 Sınırlamalar ve Gelecek Çalışmalar</h3>
 <div class="kutu">
   <ul style="margin: 4px 0 0 18px;">
-    <li><strong>LiDAR tabanlı (x,y) güncelleme:</strong> Mevcut GKF yalnızca θ bileşenini ölçüm güncellemesine dahil etmektedir. LiDAR'dan ICP veya referans nokta tabanlı (x,y) gözlemleri eklenmesi lokalizasyon doğruluğunu daha da artırabilir.</li>
+    <li><strong>LiDAR tabanlı (x,y) güncelleme:</strong> Mevcut EKF yalnızca θ bileşenini ölçüm güncellemesine dahil etmektedir. LiDAR'dan ICP veya referans nokta tabanlı (x,y) gözlemleri eklenmesi lokalizasyon doğruluğunu daha da artırabilir.</li>
     <li><strong>Global + reaktif hibrit navigasyon:</strong> RRT veya A* ile üretilen global yolun Bug2/Potansiyel Alan ile birleştirilmesi dar geçitlerde daha optimal rotalar sağlayabilir [4].</li>
     <li><strong>3B simülasyon:</strong> Mevcut 2B model, rampalar veya çok katlı depolar için 3B'ye genişletilebilir.</li>
   </ul>
@@ -783,7 +783,7 @@ Bu simülasyon, GPS'in erişilemez olduğu kapalı sanayi ortamlarında — fabr
   <tr>
     <td><strong>Claude Code (Anthropic)</strong></td>
     <td>claude-sonnet-4-6</td>
-    <td>GKF kod çatısı, sensör modelleri, navigasyon algoritmaları, görselleştirme işlevleri, Monte Carlo döngüsü, rapor metni</td>
+    <td>EKF kod çatısı, sensör modelleri, navigasyon algoritmaları, görselleştirme işlevleri, Monte Carlo döngüsü, rapor metni</td>
   </tr>
 </table>
 
@@ -791,7 +791,7 @@ Bu simülasyon, GPS'in erişilemez olduğu kapalı sanayi ortamlarında — fabr
 <ul>
   <li>Pizza fabrikası senaryo konseptini ve harita düzenini tasarlama</li>
   <li>Manyetometre sinyal kesintisi bölgesi fikrini ve EMI modelini geliştirme</li>
-  <li>GKF 3-aşamalı füzyon mimarisinin sıralamasını ve mantığını belirleme</li>
+  <li>EKF 3-aşamalı füzyon mimarisinin sıralamasını ve mantığını belirleme</li>
   <li>Hareketli engel konseptini ve hareket parametrelerini belirleme</li>
   <li>Simülasyonu çalıştırma, test etme ve hataları giderme</li>
   <li>Sonuçları yorumlama, algoritma ve parametre seçimi kararları</li>
