@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrostBot — Sensör Füzyonu ve Lokalizasyon Raporu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=Source+Sans+3:wght@400;600&family=Source+Code+Pro&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-size: 11pt;
+    line-height: 1.75;
+    color: #1a1a1a;
+    background: #fff;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 60px 80px;
+  }
+
+  /* ── COVER ─────────────────────────────────────────────────────────── */
+  .cover {
+    text-align: center;
+    padding: 60px 0 50px;
+    border-bottom: 2px solid #2c3e50;
+    margin-bottom: 48px;
+  }
+  .cover .uni { font-family: 'Source Sans 3', sans-serif; font-size: 13pt; color: #555; margin-bottom: 6px; }
+  .cover .course { font-family: 'Source Sans 3', sans-serif; font-size: 11pt; color: #777; margin-bottom: 36px; }
+  .cover h1 { font-size: 22pt; font-weight: 700; color: #2c3e50; line-height: 1.3; margin-bottom: 10px; }
+  .cover .subtitle { font-size: 13pt; color: #555; font-style: italic; margin-bottom: 40px; }
+  .cover .meta { font-family: 'Source Sans 3', sans-serif; font-size: 11pt; color: #444; line-height: 2.0; }
+  .cover .meta strong { color: #2c3e50; }
+
+  /* ── HEADINGS ───────────────────────────────────────────────────────── */
+  h1, h2, h3, h4 { font-family: 'Source Sans 3', sans-serif; color: #2c3e50; }
+  h2 { font-size: 15pt; font-weight: 700; margin: 40px 0 14px; padding-bottom: 6px; border-bottom: 1.5px solid #bdc3c7; }
+  h3 { font-size: 12.5pt; font-weight: 600; margin: 28px 0 10px; color: #34495e; }
+  h4 { font-size: 11pt; font-weight: 600; margin: 20px 0 8px; color: #555; }
+
+  /* ── PARAGRAPHS ─────────────────────────────────────────────────────── */
+  p { margin-bottom: 12px; text-align: justify; }
+
+  /* ── FIGURES ────────────────────────────────────────────────────────── */
+  figure {
+    margin: 28px 0;
+    text-align: center;
+    page-break-inside: avoid;
+  }
+  figure img {
+    max-width: 100%;
+    border: 1px solid #dde;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+  }
+  figcaption {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 9.5pt;
+    color: #555;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+  figcaption strong { color: #2c3e50; }
+
+  /* ── TABLES ─────────────────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0 28px;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  thead tr { background: #2c3e50; color: #fff; }
+  thead th { padding: 9px 12px; text-align: left; font-weight: 600; }
+  tbody tr:nth-child(even) { background: #f4f6f8; }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid #dde; }
+  .table-caption {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 9.5pt;
+    color: #555;
+    margin-top: -18px;
+    margin-bottom: 24px;
+  }
+
+  /* ── MATH ───────────────────────────────────────────────────────────── */
+  .math-block {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10.5pt;
+    background: #f7f9fc;
+    border-left: 3px solid #2980b9;
+    padding: 10px 16px;
+    margin: 14px 0;
+    color: #2c3e50;
+    overflow-x: auto;
+  }
+  .math-inline {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 10pt;
+    background: #f0f4f8;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: #1a5276;
+  }
+
+  /* ── CALLOUT ────────────────────────────────────────────────────────── */
+  .callout {
+    background: #eaf4fb;
+    border-left: 4px solid #2980b9;
+    padding: 12px 16px;
+    margin: 18px 0;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 10.5pt;
+    color: #1a3a4a;
+    border-radius: 0 4px 4px 0;
+  }
+
+  /* ── REFERENCES ─────────────────────────────────────────────────────── */
+  ol.refs { padding-left: 22px; }
+  ol.refs li { margin-bottom: 8px; font-size: 10pt; line-height: 1.6; }
+
+  /* ── AI BOX ─────────────────────────────────────────────────────────── */
+  .ai-box {
+    border: 1.5px solid #bdc3c7;
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 20px 0;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 10pt;
+    background: #fdfefe;
+  }
+  .ai-box h4 { margin: 0 0 10px; font-size: 11pt; color: #2c3e50; }
+  .ai-box ul { padding-left: 20px; }
+  .ai-box li { margin-bottom: 4px; }
+
+  /* ── PRINT ──────────────────────────────────────────────────────────── */
+  @media print {
+    body { padding: 0; max-width: 100%; font-size: 10.5pt; }
+    h2 { page-break-after: avoid; }
+    figure { page-break-inside: avoid; }
+    .cover { page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════ KAPAK ═══════════════════════════ -->
+<div class="cover">
+  <p class="uni">Bursa Teknik Üniversitesi</p>
+  <p class="course">Bilgisayar Mühendisliği Bölümü — Mekatronik Teknik Seçmeli</p>
+  <h1>Sensör Füzyonu ve Lokalizasyon Kullanarak<br>LiDAR Tabanlı Otonom Navigasyon</h1>
+  <p class="subtitle">2B Simülasyon Ortamında FrostBot Pizza Fabrikası Senaryosu</p>
+  <div class="meta">
+    <strong>Öğrenci:</strong> Mustafa Can Ersoy<br>
+    <strong>Tarih:</strong> Mayıs 2026<br>
+    <strong>GitHub:</strong> github.com/MustafaCanErsoy/autonomous-mobile-robot-sensor-fusion
+  </div>
+</div>
+
+<!-- ═══════════════════════════ 1. GİRİŞ ════════════════════════ -->
+<h2>1. Giriş ve Senaryo Tanımı</h2>
+
+<p>Bu çalışmada, bir pizza fabrikasında otonom navigasyon gerçekleştiren diferansiyel sürüşlü bir mobil robotun 2B simülasyonu sunulmaktadır. Robot, <strong>FrostBot</strong> olarak adlandırılmış ve 50 × 50 metrelik bir fabrika ortamında üç teslimat noktası arasında görev yapmaktadır.</p>
+
+<p>Gerçek fabrika ortamlarında GPS sinyali kullanılamaz; ağır makineler elektromanyetik parazit (EMI) oluşturur ve konveyör bantları, sütunlar gibi sabit engellerin yanı sıra forklift ve palet robotu gibi hareketli engeller de bulunur. Bu koşullar altında robotun güvenli bir şekilde navigasyon yapabilmesi için <strong>sensör füzyonu</strong> ve <strong>lokalizasyon</strong> teknikleri zorunludur.</p>
+
+<h3>1.1 Ortam Özellikleri</h3>
+<p>Simülasyon ortamı aşağıdaki unsurları içermektedir:</p>
+<ul style="padding-left:22px; margin-bottom:12px;">
+  <li>15 sabit engel (11 dikdörtgen makine/konveyör + 4 dairesel sütun)</li>
+  <li>2 hareketli engel: Forklift (yatay, 0.4 m/s) ve Palet Robotu (dikey, 0.45 m/s)</li>
+  <li>EMI yüksek gürültü bölgeleri (ağır makineler çevresinde 6 m yarıçap, 3× gürültü)</li>
+  <li>Pusula sinyal kesintisi bölgeleri (Fırın ve Soğutma Ünitesi çevresinde 5 m yarıçap)</li>
+</ul>
+
+<figure>
+  <img src="results/01_environment.png" alt="Fabrika ortam haritası">
+  <figcaption><strong>Şekil 1.</strong> FrostBot pizza fabrikası 2B ortam haritası. Kırmızı dikdörtgenler yüksek EMI bölgelerindeki makineleri, mavi dikdörtgenler konveyörleri, gri daireler yapısal sütunları göstermektedir. Mor daireler pusula sinyal kesintisi bölgelerini, turuncu/mor kesik çizgiler ise hareketli engel rotalarını temsil etmektedir.</figcaption>
+</figure>
+
+<h3>1.2 Robot Görevi</h3>
+<p>Robot, başlangıç noktası [3, 3] m'den hareketle sırasıyla üç teslimat noktasına ulaşmak zorundadır:</p>
+
+<table>
+  <thead><tr><th>#</th><th>Waypoint</th><th>Koordinat (m)</th><th>Açıklama</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Kalite Kontrol</td><td>(14, 12)</td><td>İlk istasyon, EMI bölgesine yakın</td></tr>
+    <tr><td>2</td><td>Ambalaj</td><td>(28, 28)</td><td>Orta koridor, hareketli engellerle kesişim</td></tr>
+    <tr><td>3</td><td>Soğuk Depo</td><td>(45, 45)</td><td>Son teslimat noktası, köşe bölgesi</td></tr>
+  </tbody>
+</table>
+<p class="table-caption">Tablo 1. Robot teslimat waypoint'leri.</p>
+
+<!-- ═══════════════════════════ 2. YÖNTEMLER ════════════════════ -->
+<h2>2. Kullanılan Yöntemler</h2>
+
+<h3>2.1 Robot Modeli — Diferansiyel Sürüş</h3>
+
+<p>Robot non-holonomik diferansiyel sürüş kinematik modeliyle temsil edilmektedir. Durum vektörü <span class="math-inline">[x, y, θ]</span> olup her adımda şu şekilde güncellenir:</p>
+
+<div class="math-block">
+x' = x + v·cos(θ)·Δt<br>
+y' = y + v·sin(θ)·Δt<br>
+θ' = arctan2(sin(θ + ω·Δt), cos(θ + ω·Δt))
+</div>
+
+<p>Diferansiyel sürüş modeli non-holonomik kısıt uygular: robot yalnızca ileriye/geriye hareket edebilir, yana kayamaz. Sağ ve sol tekerlek hızlarından doğrusal hız <span class="math-inline">v = (v_R + v_L)/2</span> ve açısal hız <span class="math-inline">ω = (v_R - v_L)/L</span> hesaplanır; burada <span class="math-inline">L = 0.5 m</span> dingil uzunluğudur.</p>
+
+<h3>2.2 Sensörler ve Gürültü Modeli</h3>
+
+<p>Simülasyonda dört sensör kullanılmaktadır. Her sensöre bölgeye bağımlı Gauss gürültüsü eklenmektedir: EMI bölgelerinde gürültü standart sapması 3× artırılmaktadır.</p>
+
+<table>
+  <thead><tr><th>Sensör</th><th>Ölçüm</th><th>Gürültü (σ)</th><th>Özel Durum</th></tr></thead>
+  <tbody>
+    <tr><td>LiDAR</td><td>180 ışın, 360°, maks. 12 m</td><td>0.05 m (×3 EMI'de)</td><td>—</td></tr>
+    <tr><td>IMU</td><td>Açısal hız ω (rad/s)</td><td>0.015 rad/s</td><td>—</td></tr>
+    <tr><td>Enkoder</td><td>v, ω (tekerlek hızlarından)</td><td>0.03 m/s / tekerlek</td><td>Çarpmada v=0</td></tr>
+    <tr><td>Manyetometre</td><td>Mutlak yönelim θ (rad)</td><td>0.05 rad (×3 EMI'de)</td><td>Blackout bölgede None</td></tr>
+  </tbody>
+</table>
+<p class="table-caption">Tablo 2. Sensör özellikleri ve gürültü parametreleri.</p>
+
+<h3>2.3 LiDAR İşleme</h3>
+
+<p>Ham LiDAR taraması 180 ışından oluşur ve ortam içindeki engellere olan mesafeleri döndürür. Navigasyon için ham gürültülü ölçüm kullanılırken görselleştirme amacıyla <strong>medyan filtresi</strong> (pencere = 7 ışın) uygulanmaktadır. Filtrelenmiş veriye gap-tabanlı ardışık kümeleme algoritması uygulanarak birbirine yakın ışın uçları aynı engele ait kümeler olarak gruplandırılmaktadır (eşik = 1.5 m).</p>
+
+<figure>
+  <img src="results/03_lidar_data.png" alt="LiDAR ham ve filtrelenmiş veri">
+  <figcaption><strong>Şekil 2.</strong> LiDAR sensör verisi karşılaştırması. Sol panel ham gürültülü ölçümü, sağ panel medyan filtresi uygulanmış ve renk kodlu kümeleme yapılmış çıktıyı göstermektedir. Gri noktalar gerçek mesafe referansını temsil etmektedir.</figcaption>
+</figure>
+
+<h3>2.4 Extended Kalman Filter (EKF) ile Sensör Füzyonu</h3>
+
+<p>Lokalizasyon için enkoder, IMU ve manyetometre verilerini birleştiren bir <strong>Genişletilmiş Kalman Filtresi (EKF)</strong> kullanılmaktadır. EKF, nonlineer kinematik modeli birinci dereceden Taylor açılımıyla (Jacobian) doğrusallaştırır [1].</p>
+
+<p>Her zaman adımında filtre üç aşamalı çalışır:</p>
+
+<h4>Aşama 1 — Manyetometre Güncellemesi (t anında)</h4>
+<div class="math-block">
+z_mag = θ_gerçek + gürültü&nbsp;&nbsp;&nbsp;(drift-free mutlak yönelim)<br>
+Kalman kazancı K hesaplanır, durum ve kovaryans güncellenir.
+</div>
+
+<h4>Aşama 2 — Enkoder Tahmini (t → t+1)</h4>
+<div class="math-block">
+x̂' = x̂ + v_enc·cos(θ̂)·Δt<br>
+ŷ' = ŷ + v_enc·sin(θ̂)·Δt<br>
+θ̂' = θ̂ + ω_enc·Δt<br>
+P' = F·P·Fᵀ + Q
+</div>
+<p>Burada F, hareket modelinin Jacobian matrisidir:</p>
+<div class="math-block">
+F = [[1, 0, -v·sin(θ)·Δt],<br>
+&nbsp;&nbsp;&nbsp;&nbsp; [0, 1,  v·cos(θ)·Δt],<br>
+&nbsp;&nbsp;&nbsp;&nbsp; [0, 0,  1          ]]
+</div>
+
+<h4>Aşama 3 — IMU Güncellemesi (t+1 anında)</h4>
+<div class="math-block">
+z_IMU = θ_önceki + ω_IMU·Δt&nbsp;&nbsp;&nbsp;(sanal θ gözlemi)<br>
+İnovasyon = z_IMU − θ̂_tahmin
+</div>
+
+<p>Bu 3 aşamalı sıralama fiziksel olarak doğrudur: manyetometre t anındaki mutlak yönelimi düzeltir, enkoder t+1'e tahmin üretir, IMU ise oluşan yönelim sürüklenmesini t+1'de giderir.</p>
+
+<p>EMI bölgelerinde manyetometre gürültüsü 3× arttığından R matrisinin ilgili elemanı da dinamik olarak güncellenmektedir:</p>
+<div class="math-block">
+R_mag_bölge = (σ_mag × gürültü_çarpanı)²
+</div>
+
+<h3>2.5 Dead Reckoning (Referans Yöntemi)</h3>
+
+<p>Dead reckoning, yalnızca enkoder verisiyle konumu entegre eden saf odometri yöntemidir. Sensör füzyonu olmadığından zamanla hata birikir ve büyük sapmalara yol açar. Bu yöntem, EKF'nin etkinliğini karşılaştırmalı olarak göstermek amacıyla referans olarak kullanılmaktadır.</p>
+
+<h3>2.6 Navigasyon Algoritmaları</h3>
+
+<h4>Potential Field Yöntemi</h4>
+<p>Robota hedefe doğru çekici (attractive) ve engellerden uzaklaştırıcı (repulsive) kuvvetler uygulanır. Toplam kuvvetin yönünde hareket eden robot, 2.5 m etki yarıçapındaki tüm 180 LiDAR ışınından repülsiyon kuvveti alır. Robotun aynı bölgede takılı kalması durumunda 25 adımlık rastgele kaçış manevrası uygulanır [3].</p>
+
+<h4>Bug2 Algoritması</h4>
+<p>İki modlu durum makinesiyle çalışır: <strong>GO_TO_GOAL</strong> (hedef yönünde düz git) ve <strong>FOLLOW_WALL</strong> (engel yüzeyini takip et). M-çizgisi: başlangıç ile hedef arasındaki düz hat. Robot engele çarptığında duvar takibine geçer; M-çizgisini hedefe daha yakın bir noktada yeniden kestiğinde GO_TO_GOAL moduna döner. 120 adımlık zaman aşımı, sonsuz döngüyü engeller.</p>
+
+<!-- ═══════════════════════════ 3. SONUÇLAR ══════════════════════ -->
+<h2>3. Sonuçlar ve Grafikler</h2>
+
+<h3>3.1 Yol Karşılaştırması</h3>
+
+<figure>
+  <img src="results/02_path_comparison.png" alt="Yol karşılaştırması">
+  <figcaption><strong>Şekil 3.</strong> Potential Field ve Bug2 algoritmaları için yol karşılaştırması. Siyah kesik çizgi engelsiz ortam için düz hat referansı (planlanan yol), renkli çizgi robotun gerçekte izlediği yoldur. Turuncu ve mor alanlar hareketli engellerin (Forklift — F, Palet Robotu — P) hareket aralıklarını göstermektedir.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>Waypoint</th><th>PF Süre</th><th>PF Mesafe</th><th>Bug2 Süre</th><th>Bug2 Mesafe</th></tr></thead>
+  <tbody>
+    <tr><td>Kalite Kontrol</td><td>19.5 s</td><td>14.0 m</td><td>12.0 s</td><td>13.4 m</td></tr>
+    <tr><td>Ambalaj</td><td>81.0 s</td><td>45.1 m</td><td>30.6 s</td><td>34.7 m</td></tr>
+    <tr><td>Soğuk Depo</td><td>117.1 s</td><td>70.4 m</td><td>61.7 s</td><td>64.8 m</td></tr>
+  </tbody>
+</table>
+<p class="table-caption">Tablo 3. Navigasyon algoritması performans karşılaştırması.</p>
+
+<p>Bug2, tüm waypoint'lere Potential Field'dan yaklaşık 2× daha hızlı ulaşmaktadır. Bunun nedeni Potential Field'ın lokal minimumlarda takılarak rastgele kaçış manevrası yapmasıdır. Bug2 ise duvar takibi stratejisiyle daha doğrudan bir güzergah izlemektedir. Her iki algoritma da tüm teslimat noktalarına başarıyla ulaşmıştır.</p>
+
+<h3>3.2 Lokalizasyon Sonuçları</h3>
+
+<figure>
+  <img src="results/04_localization.png" alt="Lokalizasyon sonuçları">
+  <figcaption><strong>Şekil 4.</strong> Lokalizasyon sonuçları. Sol panel 2B yol karşılaştırmasını ve EKF kovaryans elipslerini (%95 güven), sağ paneller ise x(t), y(t) ve θ(t) zaman serilerini göstermektedir. Gri noktalar ham manyetometre ölçümlerini, mor gölgeli bantlar sinyal kesintisi (blackout) bölgelerini temsil etmektedir.</figcaption>
+</figure>
+
+<p>EKF yolu (mavi kesik çizgi) gerçek yola (yeşil) çok yakın seyrederken Dead Reckoning (kırmızı noktalı) zamanla belirgin şekilde sapmaktadır. θ(t) grafiğinde, manyetometre blackout bölgelerinde EKF'nin yalnızca IMU+enkodere dayanarak yönelim tahminini sürdürdüğü görülmektedir.</p>
+
+<h3>3.3 Hata Analizi</h3>
+
+<figure>
+  <img src="results/05_error_analysis.png" alt="Hata analizi">
+  <figcaption><strong>Şekil 5.</strong> Konum hatası (üst) ve yönelim hatası (alt) zaman serileri. Gölgeli alanlar hata büyüklüğünü, kesik yatay çizgiler RMSE referans değerlerini göstermektedir.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>Metrik</th><th>EKF (3 Sensör)</th><th>Dead Reckoning</th><th>İyileşme</th></tr></thead>
+  <tbody>
+    <tr><td>Konum RMSE (m)</td><td><strong>0.205</strong></td><td>0.921</td><td>−77.7 %</td></tr>
+    <tr><td>Konum MAE (m)</td><td><strong>0.198</strong></td><td>0.734</td><td>−73.0 %</td></tr>
+    <tr><td>Yönelim RMSE (°)</td><td><strong>1.75°</strong></td><td>5.16°</td><td>−66.1 %</td></tr>
+    <tr><td>Yönelim MAE (°)</td><td><strong>1.37°</strong></td><td>4.35°</td><td>−68.5 %</td></tr>
+  </tbody>
+</table>
+<p class="table-caption">Tablo 4. EKF ve Dead Reckoning lokalizasyon hata karşılaştırması (Potential Field simülasyonu, seed=42).</p>
+
+<h3>3.4 LiDAR Isı Haritası</h3>
+
+<figure>
+  <img src="results/06_lidar_heatmap.png" alt="LiDAR ısı haritası">
+  <figcaption><strong>Şekil 6.</strong> 117 saniyelik görev boyunca birikimli LiDAR isabet noktası yoğunluğu. Parlak (sarı-turuncu) bölgeler sık taranan yüzeyleri göstermektedir. Robotun geçtiği güzergaha bakan engel yüzleri en yüksek tarama yoğunluğuna sahiptir.</figcaption>
+</figure>
+
+<h3>3.5 EKF Sensör İnovasyonları</h3>
+
+<figure>
+  <img src="results/07_ekf_innovations.png" alt="EKF inovasyonları">
+  <figcaption><strong>Şekil 7.</strong> EKF ön-düzeltme artıkları (inovasyonlar). Üst panel IMU sanal-theta inovasyonunu, alt panel manyetometre inovasyonunu göstermektedir. Mor gölgeli bantlar blackout bölgelerini işaretlemektedir. Mavi bant ±1σ hareketli standart sapmayı temsil etmektedir.</figcaption>
+</figure>
+
+<p>Her iki sensörün inovasyonları sıfır çevresinde simetrik dağılım sergilemektedir; bu durum filtrede sistematik bir sapma (bias) olmadığının göstergesidir. IMU RMSE = 0.696°, manyetometre RMSE = 4.448° — manyetometrenin daha gürültülü olduğu beklenen bir sonuçtur [1].</p>
+
+<h3>3.6 Sensör Ablasyon Analizi</h3>
+
+<figure>
+  <img src="results/08_sensor_ablation.png" alt="Sensör ablasyon">
+  <figcaption><strong>Şekil 8.</strong> Her sensörün EKF lokalizasyon doğruluğuna katkısı. Sol panel zaman serisini, sağ panel RMSE karşılaştırmasını göstermektedir.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>Konfigürasyon</th><th>RMSE (m)</th><th>MAE (m)</th><th>Öncekine göre</th></tr></thead>
+  <tbody>
+    <tr><td>Dead Reckoning (enkoder)</td><td>1.285</td><td>1.002</td><td>—</td></tr>
+    <tr><td>EKF: Enkoder + IMU</td><td>0.360</td><td>0.289</td><td>−72.0 %</td></tr>
+    <tr><td>EKF: Enkoder + IMU + Manyetometre</td><td><strong>0.173</strong></td><td><strong>0.169</strong></td><td>−52.0 %</td></tr>
+  </tbody>
+</table>
+<p class="table-caption">Tablo 5. Sensör ablasyon çalışması sonuçları.</p>
+
+<p>Ablasyon çalışması her sensörün bağımsız katkısını kanıtlamaktadır: IMU eklenmesi drift'i %72 azaltırken manyetometre eklenmesi ek %52 iyileşme sağlamaktadır. Bu sonuç, mutlak yönelim bilgisi sağlayan sensörün (manyetometre) lokalizasyon kararlılığı açısından kritik önem taşıdığını göstermektedir [2].</p>
+
+<h3>3.7 Monte Carlo Dayanıklılık Analizi</h3>
+
+<figure>
+  <img src="results/09_monte_carlo.png" alt="Monte Carlo analizi">
+  <figcaption><strong>Şekil 9.</strong> 10 farklı rastgele seed (42–51) üzerinde EKF ve Dead Reckoning karşılaştırması. Sol panelde ince çizgiler tek çalışmaları, kalın çizgiler ortalamayı, gölgeli bantlar ±1σ aralığını göstermektedir. Sağ panel her seed için RMSE dağılımını box plot olarak sunmaktadır.</figcaption>
+</figure>
+
+<table>
+  <thead><tr><th>Yöntem</th><th>Ortalama RMSE (m)</th><th>Std (m)</th><th>Min (m)</th><th>Maks (m)</th></tr></thead>
+  <tbody>
+    <tr><td>Dead Reckoning</td><td>6.782</td><td>±5.042</td><td>1.12</td><td>17.84</td></tr>
+    <tr><td>EKF (3 sensör)</td><td><strong>0.167</strong></td><td>±0.047</td><td>0.094</td><td>0.244</td></tr>
+  </tbody>
+</table>
+<p class="table-caption">Tablo 6. Monte Carlo analizi özet istatistikleri (10 seed).</p>
+
+<p>Dead Reckoning'in 10 seed üzerindeki yüksek varyansı (σ = 5.042 m), saf odometrinin rastgele gürültüye karşı son derece kırılgan olduğunu göstermektedir. Bazı seed'lerde DR hatası 17 metreyi aşmaktadır — 50×50 m'lik ortamda tamamen yönünü kaybetmek anlamına gelir. Buna karşın EKF, tüm seed'lerde 0.094–0.244 m aralığında tutarlı performans sergilemektedir. Bu sonuç sensör füzyonunun dayanıklılık açısından vazgeçilmez olduğunu kanıtlamaktadır.</p>
+
+<!-- ═══════════════════════════ 4. TARTIŞMA ══════════════════════ -->
+<h2>4. Hata Analizi ve Tartışma</h2>
+
+<h3>4.1 EKF Performansı</h3>
+
+<p>EKF, 117 saniyelik görev boyunca 0.205 m RMSE ile Dead Reckoning'e göre %77.7 daha iyi konum doğruluğu elde etmiştir. Bu başarının iki temel nedeni vardır: (1) manyetometrenin sağladığı drift-free mutlak yönelim korreksiyonu ve (2) EKF kovaryans matrisi P aracılığıyla her sensörün güvenilirliğinin dinamik olarak ağırlıklandırılması.</p>
+
+<p>EKF hatasının sıfırdan farklı olmasının başlıca nedenleri şunlardır: enkoder kayma gürültüsü pozisyon tahmininde belirsizliğe yol açmakta, EMI bölgelerinde 3× artan gürültü filtrenin geçici olarak bozulmasına neden olmakta ve blackout bölgelerinde manyetometre devre dışı kalmaktadır.</p>
+
+<h3>4.2 Navigasyon Algoritması Karşılaştırması</h3>
+
+<p>Bug2, bu senaryoda Potential Field'dan yaklaşık 2× daha hızlı performans göstermiştir. Potential Field yönteminin yavaşlamasının başlıca nedeni lokal minimum problemidir: robot iki repülsiyon bölgesi arasında sıkışıp kalabilmekte ve bu durumda 25 adımlık rastgele kaçış manevrası zaman kaybına yol açmaktadır. Bug2 ise M-çizgisi takibi sayesinde bu sorunu yaşamamaktadır. Ancak Bug2 algoritması karmaşık labirent tipi ortamlarda sonsuz döngüye girebilir; bunu önlemek için 120 adımlık zaman aşımı mekanizması uygulanmıştır.</p>
+
+<h3>4.3 Sınırlamalar</h3>
+
+<p>Bu simülasyon bazı gerçek dünya etkilerini modellerken bazılarını basitleştirmektedir. Modellenen etkiler: sensör gürültüsü, EMI bölgeleri, çarpışma dinamiği, hareketli engeller. Basitleştirilen etkiler: LiDAR yansıma/gölge efektleri, tekerlek kayması, batarya tükenmesi ve 3B ortam etkileri yok sayılmıştır.</p>
+
+<!-- ═══════════════════════════ 5. KAYNAKLAR ════════════════════ -->
+<h2>5. Kaynaklar</h2>
+
+<ol class="refs">
+  <li>V. Ušinskis, M. Nowicki, A. Dzedzickis ve V. Bučinskas, "Sensor-fusion based navigation for autonomous mobile robot," <em>Sensors</em>, cilt 25, sayı 4, makale 1248, 2025. doi: 10.3390/s25041248</li>
+  <li>Y. Ou, Y. Cai, Y. Sun ve T. Qin, "Autonomous navigation by mobile robot with sensor fusion based on deep reinforcement learning," <em>Sensors</em>, cilt 24, sayı 12, makale 3895, 2024. doi: 10.3390/s24123895</li>
+  <li>B. Zhang ve C. Li, "The optimization and application research of the RRT-APF-based path planning algorithm," <em>Electronics</em>, cilt 13, sayı 24, makale 4963, 2024. doi: 10.3390/electronics13244963</li>
+</ol>
+
+<!-- ═══════════════════════════ 6. YAPAY ZEKA BEYANI ═══════════ -->
+<h2>6. Yapay Zeka Kullanım Beyanı</h2>
+
+<div class="ai-box">
+  <h4>Yapay Zeka Kullanım Beyanı</h4>
+  <p><strong>Kullanılan araçlar:</strong> Claude Code (Anthropic) — claude-sonnet-4-6</p>
+  <p><strong>Yapay zekanın kullanıldığı bölümler:</strong></p>
+  <ul>
+    <li>EKF, navigasyon ve sensör simülasyon kodlarının yazılması ve hata ayıklaması</li>
+    <li>Görselleştirme fonksiyonlarının geliştirilmesi</li>
+    <li>Rapor metninin dil ve yapı açısından düzenlenmesi</li>
+  </ul>
+  <p><strong>Öğrencinin kendi katkıları:</strong></p>
+  <ul>
+    <li>Pizza fabrikası senaryo konsepti ve waypoint düzeninin tasarlanması</li>
+    <li>Algoritma ve parametre seçimi kararları (GOAL_TOL, gürültü katsayıları, EMI bölge yarıçapları)</li>
+    <li>Simülasyon çıktılarının çalıştırılması, doğrulanması ve yorumlanması</li>
+    <li>Mantıksal ve yazılımsal hataların tespit edilip düzeltilmesi kararları</li>
+    <li>Proje yönlendirmesi ve tüm teknik kararların onaylanması</li>
+  </ul>
+  <p>Yapay zeka araçları yardımcı araç olarak kullanılmıştır. Nihai kod, senaryo, sonuçlar ve değerlendirmeler öğrenci tarafından kontrol edilerek teslim edilmiştir.</p>
+</div>
+
+</body>
+</html>
